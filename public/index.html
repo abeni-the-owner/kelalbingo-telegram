@@ -1,0 +1,97 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>KELALBINGO</title>
+    <script src="https://telegram.org/js/telegram-web-app.js"></script>
+    <link rel="stylesheet" href="styles.css">
+</head>
+
+<body>
+    <div id="app">
+        <!-- Loading Screen -->
+        <div id="loading" class="screen active">
+            <div class="loader"></div>
+            <p>Loading KELALBINGO...</p>
+        </div>
+
+        <!-- Login Screen -->
+        <div id="login-screen" class="screen">
+            <div class="logo">🎮</div>
+            <h1>KELALBINGO</h1>
+            <p>Welcome! Authenticating...</p>
+        </div>
+
+        <!-- Main Game Screen -->
+        <div id="game-screen" class="screen">
+            <!-- Header -->
+            <div class="header">
+                <div class="user-info">
+                    <span id="username">User</span>
+                </div>
+                <div class="balance-info">
+                    <div class="balance">
+                        <span class="label">Balance:</span>
+                        <span id="balance" class="value">0</span> Birr
+                    </div>
+                    <div class="profit">
+                        <span class="label">Profit:</span>
+                        <span id="profit" class="value">0</span> Birr
+                    </div>
+                </div>
+            </div>
+
+            <!-- Round Info -->
+            <div class="round-info">
+                <h2>ROUND <span id="round-number">1</span></h2>
+            </div>
+
+            <!-- Navigation Tabs -->
+            <div class="tabs">
+                <button class="tab active" data-tab="play">🎲 Play</button>
+                <button class="tab" data-tab="cards">🃏 Cards</button>
+                <button class="tab" data-tab="history">📊 History</button>
+            </div>
+
+            <!-- Play Tab -->
+            <div id="play-tab" class="tab-content active">
+                <div class="play-container">
+                    <h3>Select Your Cards</h3>
+                    <div id="selected-cards" class="selected-cards">
+                        <p class="empty-state">No cards selected</p>
+                    </div>
+                    <button id="start-game-btn" class="btn btn-primary" disabled>
+                        Start Game
+                    </button>
+                </div>
+            </div>
+
+            <!-- Cards Tab -->
+            <div id="cards-tab" class="tab-content">
+                <div class="cards-container">
+                    <h3>Available Bingo Cards</h3>
+                    <div id="cards-list" class="cards-grid">
+                        <p class="loading">Loading cards...</p>
+                    </div>
+                </div>
+            </div>
+
+            <!-- History Tab -->
+            <div id="history-tab" class="tab-content">
+                <div class="history-container">
+                    <h3>Game History</h3>
+                    <div id="stats" class="stats-box"></div>
+                    <div id="history-list" class="history-list">
+                        <p class="loading">Loading history...</p>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script src="app.js"></script>
+</body>
+
+</html>

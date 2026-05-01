@@ -1,0 +1,150 @@
+const bot = require('../config/telegram');
+const pool = require('../config/database');
+
+// Start command
+bot.onText(/\/start/, async (msg) => {
+  const chatId = msg.chat.id;
+  const userId = msg.from.id;
+  const username = msg.from.username || msg.from.first_name;
+
+  const webAppUrl = process.env.WEB_APP_URL || 'https://your-app-url.com';
+
+  const welcomeMessage = `
+🎮 *Welcome to KELALBINGO!*
+
+Hello ${username}! 👋
+
+Play bingo, win prizes, and have fun!
+
+Click the button below to start playing:
+  `;
+
+  const keyboard = {
+    inline_keyboard: [
+      [
+        {
+          text: '🎲 Play Bingo',
+          web_app: { url: webAppUrl }
+        }
+      ],
+      [
+        { text: '💰 Check Balance', callback_data: 'check_balance' },
+        { text: '📊 My Stats', callback_data: 'my_stats' }
+      ],
+      [
+        { text: '❓ Help', callback_data: 'help' }
+      ]
+    ]
+  };
+
+  bot.sendMessage(chatId, welcomeMessage, {
+    parse_mode: 'Markdown',
+    reply_markup: keyboard
+  });
+});
+
+// Callback query handler
+bot.on('callback_query', async (query) => {
+  const chatId = query.message.chat.id;
+  const userId = query.from.id;
+  const data = query.data;
+
+  try {
+    if (data === 'check_balance') {
+      const result = await pool.query(
+        `SELECT b.balance, b.profit 
+         FROM balances b
+         JOIN users u ON b.user_id = u.id
+         WHERE u.telegram_id = $1`,
+        [userId]
+      );
+
+      if (result.rows.length > 0) {
+        const { balance, profit } = result.rows[0];
+        bot.sendMessage(chatId, 
+          `💰 *Your Balance*\n\n` +
+          `Balance: ${balance} Birr\n` +
+          `Profit: ${profit} Birr`,
+          { parse_mode: 'Markdown' }
+        );
+      } else {
+        bot.sendMessage(chatId, '❌ User not found. Please start the game first.');
+      }
+    }
+
+    if (data === 'my_stats') {
+      const result = await pool.query(
+        `SELECT 
+           COUNT(*) as total_games,
+           SUM(bet_amount) as total_bet,
+           SUM(payout) as total_payout,
+           SUM(profit) as total_profit
+         FROM game_history gh
+         JOIN users u ON gh.user_id = u.id
+         WHERE u.telegram_id = $1`,
+        [userId]
+      );
+
+      const stats = result.rows[0];
+      bot.sendMessage(chatId,
+        `📊 *Your Statistics*\n\n` +
+        `Total Games: ${stats.total_games || 0}\n` +
+        `Total Bet: ${stats.total_bet || 0} Birr\n` +
+        `Total Payout: ${stats.total_payout || 0} Birr\n` +
+        `Total Profit: ${stats.total_profit || 0} Birr`,
+        { parse_mode: 'Markdown' }
+      );
+    }
+
+    if (data === 'help') {
+      bot.sendMessage(chatId,
+        `❓ *Help & Instructions*\n\n` +
+        `1. Click "Play Bingo" to start\n` +
+        `2. Select your bingo cards\n` +
+        `3. Play and win prizes!\n\n` +
+        `Commands:\n` +
+        `/start - Start the bot\n` +
+        `/balance - Check your balance\n` +
+        `/stats - View your statistics`,
+        { parse_mode: 'Markdown' }
+      );
+    }
+
+    bot.answerCallbackQuery(query.id);
+  } catch (error) {
+    console.error('Callback query error:', error);
+    bot.answerCallbackQuery(query.id, { text: 'Error occurred' });
+  }
+});
+
+// Balance command
+bot.onText(/\/balance/, async (msg) => {
+  const chatId = msg.chat.id;
+  const userId = msg.from.id;
+
+  try {
+    const result = await pool.query(
+      `SELECT b.balance, b.profit 
+       FROM balances b
+       JOIN users u ON b.user_id = u.id
+       WHERE u.telegram_id = $1`,
+      [userId]
+    );
+
+    if (result.rows.length > 0) {
+      const { balance, profit } = result.rows[0];
+      bot.sendMessage(chatId,
+        `💰 Balance: ${balance} Birr\n📈 Profit: ${profit} Birr`
+      );
+    } else {
+      bot.sendMessage(chatId, '❌ User not found. Use /start first.');
+    }
+  } catch (error) {
+    console.error('Balance command error:', error);
+    bot.sendMessage(chatId, '❌ Error fetching balance');
+  }
+});
+
+console.log('✅ Telegram Bot commands registered');
+
+module.exports = bot;
