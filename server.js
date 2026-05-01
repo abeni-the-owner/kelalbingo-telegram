@@ -29,6 +29,7 @@ const userRoutes = require('./routes/users');
 const balanceRoutes = require('./routes/balance');
 const gameRoutes = require('./routes/game');
 const cardsRoutes = require('./routes/cards');
+const adminRoutes = require('./routes/admin');
 
 // Use routes
 app.use('/api/auth', authRoutes);
@@ -36,6 +37,7 @@ app.use('/api/users', userRoutes);
 app.use('/api/balance', balanceRoutes);
 app.use('/api/game', gameRoutes);
 app.use('/api/cards', cardsRoutes);
+app.use('/api/admin', adminRoutes);
 
 // Health check
 app.get('/health', (req, res) => {
