@@ -10,6 +10,7 @@ const API_URL = window.location.origin + '/api';
 let currentUser = null;
 let selectedCards = [];
 let currentRound = 1;
+let allCards = []; // Store all available cards
 
 // Initialize app
 async function init() {
@@ -104,13 +105,15 @@ async function loadCards() {
     try {
         const response = await fetch(`${API_URL}/cards`, {
             headers: {
-                'X-Telegram-User-Id': tg.initDataUnsafe.user.id
+                'X-Telegram-User-Id': tg.initDataUnsafe.user?.id || 1
             }
         });
         const data = await response.json();
+        allCards = data.cards; // Store globally
         displayCards(data.cards);
     } catch (error) {
         console.error('Load cards error:', error);
+        document.getElementById('cards-list').innerHTML = '<p class="error">Failed to load cards</p>';
     }
 }
 
@@ -124,7 +127,7 @@ function displayCards(cards) {
     }
 
     container.innerHTML = cards.map(card => `
-        <div class="card-item" data-card-id="${card.id}" onclick="viewCard(${card.id}, ${card.card_number}, '${JSON.stringify(card).replace(/'/g, "&apos;")}')">
+        <div class="card-item" data-card-id="${card.id}" onclick="viewCard(${card.id})">
             <div class="card-number">Card #${card.card_number}</div>
             <div class="card-preview">Click to view</div>
         </div>
@@ -132,14 +135,18 @@ function displayCards(cards) {
 }
 
 // View card details
-function viewCard(cardId, cardNumber, cardDataStr) {
-    const cardData = typeof cardDataStr === 'string' ? JSON.parse(cardDataStr) : cardDataStr;
+function viewCard(cardId) {
+    const card = allCards.find(c => c.id === cardId);
+    if (!card) {
+        console.error('Card not found:', cardId);
+        return;
+    }
     
     const modalHtml = `
         <div class="modal" id="card-modal" onclick="closeModal()">
             <div class="modal-content" onclick="event.stopPropagation()">
                 <div class="modal-header">
-                    <h3>Card #${cardNumber}</h3>
+                    <h3>Card #${card.card_number}</h3>
                     <button class="close-btn" onclick="closeModal()">×</button>
                 </div>
                 <div class="bingo-card">
@@ -150,10 +157,10 @@ function viewCard(cardId, cardNumber, cardDataStr) {
                         <div class="bingo-letter">G</div>
                         <div class="bingo-letter">O</div>
                     </div>
-                    ${generateCardRows(cardData)}
+                    ${generateCardRows(card)}
                 </div>
                 <div class="modal-actions">
-                    <button class="btn btn-primary" onclick="selectCardFromModal(${cardId}, ${cardNumber})">
+                    <button class="btn btn-primary" onclick="selectCardFromModal(${card.id}, ${card.card_number})">
                         Select This Card
                     </button>
                     <button class="btn btn-secondary" onclick="closeModal()">
@@ -203,8 +210,10 @@ function selectCard(cardId, cardNumber) {
     const cardIndex = selectedCards.findIndex(c => c.id === cardId);
     
     if (cardIndex > -1) {
+        // Remove card
         selectedCards.splice(cardIndex, 1);
     } else {
+        // Add card
         selectedCards.push({ id: cardId, number: cardNumber });
     }
     
@@ -224,9 +233,19 @@ function updateSelectedCards() {
     container.innerHTML = selectedCards.map(card => `
         <div class="selected-card">
             <span>Card #${card.number}</span>
-            <button class="remove-card" onclick="selectCard(${card.id}, ${card.number})">Remove</button>
+            <button class="remove-card" onclick="removeCard(${card.id})">✕ Remove</button>
         </div>
     `).join('');
+}
+
+// Remove card
+function removeCard(cardId) {
+    const cardIndex = selectedCards.findIndex(c => c.id === cardId);
+    if (cardIndex > -1) {
+        selectedCards.splice(cardIndex, 1);
+        updateSelectedCards();
+        updateStartButton();
+    }
 }
 
 // Update start button
