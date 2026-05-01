@@ -6,11 +6,15 @@ tg.ready();
 // API Configuration
 const API_URL = window.location.origin + '/api';
 
+// Initialize Socket.IO
+const socket = io(window.location.origin);
+
 // State
 let currentUser = null;
 let selectedCards = [];
 let currentRound = 1;
 let allCards = []; // Store all available cards
+let takenCards = new Set(); // Track cards taken by others
 
 // Initialize app
 async function init() {
@@ -448,3 +452,52 @@ document.getElementById('start-game-btn').addEventListener('click', () => {
 
 // Initialize on load
 init();
+
+
+// Socket.IO real-time events
+socket.on('connect', () => {
+    console.log('🔌 Connected to server');
+    // Join current round room
+    socket.emit('join-round', currentRound);
+});
+
+socket.on('disconnect', () => {
+    console.log('🔌 Disconnected from server');
+});
+
+// Real-time: Card selected by another user
+socket.on('card-selected', (data) => {
+    console.log('Card selected by another user:', data);
+    
+    // Add to taken cards
+    takenCards.add(data.card_id);
+    
+    // Remove from available cards if not ours
+    if (currentUser && data.user_id !== currentUser.id) {
+        allCards = allCards.filter(card => card.id !== data.card_id);
+        displayCards(allCards);
+        
+        // Show notification
+        tg.showPopup({
+            message: `Card #${data.card_number} was just selected by another player`
+        });
+    }
+});
+
+// Real-time: Card deselected by another user
+socket.on('card-deselected', (data) => {
+    console.log('Card released by another user:', data);
+    
+    // Remove from taken cards
+    takenCards.delete(data.card_id);
+    
+    // Reload cards to show newly available card
+    if (currentUser && data.user_id !== currentUser.id) {
+        loadCards();
+        
+        // Show notification
+        tg.showPopup({
+            message: `Card #${data.card_number} is now available!`
+        });
+    }
+});

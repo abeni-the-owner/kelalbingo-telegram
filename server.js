@@ -2,10 +2,23 @@ const express = require('express');
 const cors = require('cors');
 const helmet = require('helmet');
 const rateLimit = require('express-rate-limit');
+const http = require('http');
+const socketIO = require('socket.io');
 require('dotenv').config();
 
 const app = express();
+const server = http.createServer(app);
+const io = socketIO(server, {
+  cors: {
+    origin: "*",
+    methods: ["GET", "POST"]
+  }
+});
+
 const PORT = process.env.PORT || 3000;
+
+// Make io accessible to routes
+app.set('io', io);
 
 // Middleware
 app.use(helmet({
@@ -52,13 +65,30 @@ app.use((err, req, res, next) => {
   });
 });
 
+// Socket.IO real-time events
+io.on('connection', (socket) => {
+  console.log('👤 User connected:', socket.id);
+
+  // User joins a room (round-based)
+  socket.on('join-round', (roundNumber) => {
+    socket.join(`round-${roundNumber}`);
+    console.log(`User ${socket.id} joined round ${roundNumber}`);
+  });
+
+  // User disconnects
+  socket.on('disconnect', () => {
+    console.log('👤 User disconnected:', socket.id);
+  });
+});
+
 // Initialize Telegram Bot
 require('./bot/bot');
 
 // Start server
-app.listen(PORT, () => {
+server.listen(PORT, () => {
   console.log(`🚀 Server running on port ${PORT}`);
   console.log(`📱 Environment: ${process.env.NODE_ENV || 'development'}`);
+  console.log(`🔌 WebSocket server ready`);
 });
 
-module.exports = app;
+module.exports = { app, io };

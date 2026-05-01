@@ -108,6 +108,12 @@ router.post('/select', simpleAuth, async (req, res) => {
       });
     }
 
+    // Get card number
+    const cardResult = await client.query(
+      'SELECT card_number FROM bingo_cards WHERE id = $1',
+      [card_id]
+    );
+
     // Insert or update user card selection
     await client.query(
       `INSERT INTO user_cards (user_id, card_id, round_number, is_active)
@@ -118,6 +124,14 @@ router.post('/select', simpleAuth, async (req, res) => {
     );
 
     await client.query('COMMIT');
+
+    // Broadcast to all users in this round
+    const io = req.app.get('io');
+    io.to(`round-${currentRound}`).emit('card-selected', {
+      card_id: card_id,
+      card_number: cardResult.rows[0].card_number,
+      user_id: userId
+    });
 
     res.json({ success: true, message: 'Card selected successfully' });
 
@@ -132,10 +146,12 @@ router.post('/select', simpleAuth, async (req, res) => {
 
 // Deselect card
 router.post('/deselect', simpleAuth, async (req, res) => {
+  const client = await pool.connect();
+  
   try {
     const { card_id } = req.body;
 
-    const userResult = await pool.query(
+    const userResult = await client.query(
       'SELECT id FROM users WHERE telegram_id = $1',
       [req.telegramUser.id]
     );
@@ -146,26 +162,42 @@ router.post('/deselect', simpleAuth, async (req, res) => {
 
     const userId = userResult.rows[0].id;
 
-    const roundResult = await pool.query(
+    const roundResult = await client.query(
       'SELECT round_number FROM game_rounds WHERE status = $1 ORDER BY round_number DESC LIMIT 1',
       ['active']
     );
 
     const currentRound = roundResult.rows[0]?.round_number || 1;
 
+    // Get card number
+    const cardResult = await client.query(
+      'SELECT card_number FROM bingo_cards WHERE id = $1',
+      [card_id]
+    );
+
     // Mark card as inactive (release it)
-    await pool.query(
+    await client.query(
       `UPDATE user_cards 
        SET is_active = false 
        WHERE user_id = $1 AND card_id = $2 AND round_number = $3`,
       [userId, card_id, currentRound]
     );
 
+    // Broadcast to all users in this round
+    const io = req.app.get('io');
+    io.to(`round-${currentRound}`).emit('card-deselected', {
+      card_id: card_id,
+      card_number: cardResult.rows[0].card_number,
+      user_id: userId
+    });
+
     res.json({ success: true, message: 'Card deselected successfully' });
 
   } catch (error) {
     console.error('Deselect card error:', error);
     res.status(500).json({ error: 'Failed to deselect card' });
+  } finally {
+    client.release();
   }
 });
 
