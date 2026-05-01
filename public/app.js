@@ -14,6 +14,8 @@ let currentUser = null;
 let selectedCards = [];
 let currentRound = 1;
 let allCards = []; // Store all available cards
+let takenCards = {}; // Track cards taken by others: { cardId: userId }
+let takenCards = {}; // Track cards taken by others: { cardId: userId }
 
 // Initialize app
 async function init() {
@@ -159,12 +161,24 @@ function displayCards(cards) {
         return;
     }
 
+    const myUserId = currentUser?.telegram_id || tg.initDataUnsafe.user?.id;
+
     container.innerHTML = cards.map(card => {
-        const isSelected = selectedCards.some(c => c.id === card.id);
+        const isSelectedByMe = selectedCards.some(c => c.id === card.id);
+        const isTakenByOther = takenCards[card.id] && takenCards[card.id] !== myUserId;
+        
+        let className = 'card-btn-compact';
+        if (isSelectedByMe) {
+            className += ' selected'; // Green - my card
+        } else if (isTakenByOther) {
+            className += ' taken'; // Gray - taken by someone else
+        }
+        
         return `
-            <button class="card-btn-compact ${isSelected ? 'selected' : ''}" 
+            <button class="${className}" 
                     data-card-id="${card.id}" 
-                    onclick="toggleCardSelection(${card.id}, ${card.card_number})">
+                    onclick="toggleCardSelection(${card.id}, ${card.card_number})"
+                    ${isTakenByOther ? 'disabled' : ''}>
                 ${card.card_number}
             </button>
         `;
@@ -172,40 +186,54 @@ function displayCards(cards) {
 }
 
 // Toggle card selection (real-time via WebSocket, no database)
-async function toggleCardSelection(cardId, cardNumber) {
+function toggleCardSelection(cardId, cardNumber) {
+    const myUserId = currentUser?.telegram_id || tg.initDataUnsafe.user?.id;
+    
+    // Check if card is taken by someone else
+    if (takenCards[cardId] && takenCards[cardId] !== myUserId) {
+        tg.showAlert(`Card #${cardNumber} is already selected by another player`);
+        return;
+    }
+    
     const cardIndex = selectedCards.findIndex(c => c.id === cardId);
     
     if (cardIndex > -1) {
-        // Deselect card - release it
+        // Deselect this specific card
         selectedCards.splice(cardIndex, 1);
+        
+        // Remove from taken cards
+        delete takenCards[cardId];
         
         // Emit to server (real-time)
         socket.emit('deselect-card', {
             roundNumber: currentRound,
             cardId: cardId,
             cardNumber: cardNumber,
-            userId: currentUser?.telegram_id || tg.initDataUnsafe.user?.id
+            userId: myUserId
         });
         
-        updateSelectedCards();
-        updateStartButton();
-        displayCards(allCards);
+        console.log(`Deselected card #${cardNumber}`);
     } else {
-        // Select card - reserve it
+        // Select card
         selectedCards.push({ id: cardId, number: cardNumber });
+        
+        // Mark as taken by me
+        takenCards[cardId] = myUserId;
         
         // Emit to server (real-time)
         socket.emit('select-card', {
             roundNumber: currentRound,
             cardId: cardId,
             cardNumber: cardNumber,
-            userId: currentUser?.telegram_id || tg.initDataUnsafe.user?.id
+            userId: myUserId
         });
         
-        updateSelectedCards();
-        updateStartButton();
-        displayCards(allCards);
+        console.log(`Selected card #${cardNumber}`);
     }
+    
+    updateSelectedCards();
+    updateStartButton();
+    displayCards(allCards);
 }
 
 // View card details
@@ -452,42 +480,69 @@ socket.on('disconnect', () => {
 // Receive current card selections when joining
 socket.on('current-selections', (selections) => {
     console.log('Current selections:', selections);
-    // Mark cards as taken
+    const myUserId = currentUser?.telegram_id || tg.initDataUnsafe.user?.id;
+    
+    // Clear and rebuild taken cards
+    takenCards = {};
+    selectedCards = [];
+    
+    // Process all selections
     Object.keys(selections).forEach(cardId => {
-        const card = allCards.find(c => c.id === parseInt(cardId));
-        if (card && selections[cardId] !== currentUser?.telegram_id) {
-            // Remove from available cards
-            allCards = allCards.filter(c => c.id !== parseInt(cardId));
-        } else if (card && selections[cardId] === currentUser?.telegram_id) {
-            // Add to my selected cards
-            if (!selectedCards.some(c => c.id === parseInt(cardId))) {
+        const userId = selections[cardId];
+        takenCards[parseInt(cardId)] = userId;
+        
+        // If it's my card, add to selected cards
+        if (userId === myUserId) {
+            const card = allCards.find(c => c.id === parseInt(cardId));
+            if (card) {
                 selectedCards.push({ id: parseInt(cardId), number: card.card_number });
             }
         }
     });
+    
     displayCards(allCards);
     updateSelectedCards();
+    updateStartButton();
 });
 
 // Real-time: Card selected by any user
 socket.on('card-selected', (data) => {
     console.log('Card selected:', data);
     
-    if (currentUser && data.userId !== currentUser.telegram_id) {
-        // Remove from available cards
-        allCards = allCards.filter(card => card.id !== data.cardId);
-        displayCards(allCards);
+    // Mark card as taken
+    takenCards[data.cardId] = data.userId;
+    
+    // If it's my card, add to selected
+    const myUserId = currentUser?.telegram_id || tg.initDataUnsafe.user?.id;
+    if (data.userId === myUserId) {
+        if (!selectedCards.some(c => c.id === data.cardId)) {
+            selectedCards.push({ id: data.cardId, number: data.cardNumber });
+            updateSelectedCards();
+            updateStartButton();
+        }
     }
+    
+    // Refresh display to show taken card
+    displayCards(allCards);
 });
 
 // Real-time: Card deselected by any user
 socket.on('card-deselected', (data) => {
     console.log('Card released:', data);
     
-    if (currentUser && data.userId !== currentUser.telegram_id) {
-        // Reload cards to show newly available card
-        loadCards();
+    // Remove from taken cards
+    delete takenCards[data.cardId];
+    
+    // If it was my card, remove from selected
+    const myUserId = currentUser?.telegram_id || tg.initDataUnsafe.user?.id;
+    if (data.userId === myUserId) {
+        selectedCards = selectedCards.filter(c => c.id !== data.cardId);
+        updateSelectedCards();
+        updateStartButton();
     }
+    
+    // Refresh display to show available card
+    displayCards(allCards);
 });
 
 // Card already taken by someone else
