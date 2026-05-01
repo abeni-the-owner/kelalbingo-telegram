@@ -113,7 +113,10 @@ async function loadCards() {
         displayCards(data.cards);
     } catch (error) {
         console.error('Load cards error:', error);
-        document.getElementById('cards-list').innerHTML = '<p class="error">Failed to load cards</p>';
+        const container = document.getElementById('cards-grid');
+        if (container) {
+            container.innerHTML = '<p class="error">Failed to load cards</p>';
+        }
     }
 }
 
