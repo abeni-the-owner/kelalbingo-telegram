@@ -6,7 +6,7 @@ const { simpleAuth } = require('../middleware/auth');
 // Get all bingo cards (available only)
 router.get('/', async (req, res) => {
   try {
-    const userId = req.headers['x-telegram-user-id'];
+    const telegramUserId = req.headers['x-telegram-user-id'];
     
     // Get current round
     const roundResult = await pool.query(
@@ -15,22 +15,33 @@ router.get('/', async (req, res) => {
     );
     const currentRound = roundResult.rows[0]?.round_number || 1;
 
+    // Get user's internal ID if they exist
+    let userId = null;
+    if (telegramUserId) {
+      const userResult = await pool.query(
+        'SELECT id FROM users WHERE telegram_id = $1',
+        [telegramUserId]
+      );
+      userId = userResult.rows[0]?.id || null;
+    }
+
     // Get cards that are NOT already selected by other users in this round
     const result = await pool.query(
       `SELECT bc.* FROM bingo_cards bc
        WHERE bc.id NOT IN (
          SELECT card_id FROM user_cards 
-         WHERE round_number = $1 AND is_active = true
-         AND user_id != $2
+         WHERE round_number = $1 
+         AND is_active = true
+         ${userId ? 'AND user_id != $2' : ''}
        )
        ORDER BY bc.card_number LIMIT 100`,
-      [currentRound, userId || 0]
+      userId ? [currentRound, userId] : [currentRound]
     );
     
     res.json({ cards: result.rows, round: currentRound });
   } catch (error) {
     console.error('Get cards error:', error);
-    res.status(500).json({ error: 'Failed to get cards' });
+    res.status(500).json({ error: 'Failed to get cards', details: error.message });
   }
 });
 
