@@ -166,16 +166,51 @@ router.get('/db-status', checkAdmin, async (req, res) => {
     `);
 
     const cardCount = await pool.query('SELECT COUNT(*) FROM bingo_cards');
+    const userCount = await pool.query('SELECT COUNT(*) FROM users');
 
     res.json({
       success: true,
       tables: result.rows.map(r => r.table_name),
       count: result.rows.length,
-      cards_count: parseInt(cardCount.rows[0].count)
+      cards_count: parseInt(cardCount.rows[0].count),
+      users_count: parseInt(userCount.rows[0].count)
     });
   } catch (error) {
     res.status(500).json({
       error: 'Failed to check database status',
+      details: error.message
+    });
+  }
+});
+
+// Get user statistics
+router.get('/users-stats', checkAdmin, async (req, res) => {
+  try {
+    const stats = await pool.query(`
+      SELECT 
+        COUNT(*) as total_users,
+        COUNT(CASE WHEN last_login > NOW() - INTERVAL '24 hours' THEN 1 END) as active_today,
+        COUNT(CASE WHEN last_login > NOW() - INTERVAL '7 days' THEN 1 END) as active_week,
+        COUNT(CASE WHEN created_at > NOW() - INTERVAL '24 hours' THEN 1 END) as new_today
+      FROM users
+    `);
+
+    const topUsers = await pool.query(`
+      SELECT u.username, u.first_name, b.balance, b.profit
+      FROM users u
+      JOIN balances b ON u.id = b.user_id
+      ORDER BY b.profit DESC
+      LIMIT 10
+    `);
+
+    res.json({
+      success: true,
+      stats: stats.rows[0],
+      top_users: topUsers.rows
+    });
+  } catch (error) {
+    res.status(500).json({
+      error: 'Failed to get user stats',
       details: error.message
     });
   }
