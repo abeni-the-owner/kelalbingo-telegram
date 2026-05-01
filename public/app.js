@@ -3,9 +3,6 @@ const tg = window.Telegram.WebApp;
 tg.expand();
 tg.ready();
 
-console.log('🎮 KELALBINGO Starting...');
-console.log('Telegram WebApp:', tg);
-
 // API Configuration
 const API_URL = window.location.origin + '/api';
 
@@ -19,22 +16,32 @@ let currentRound = 1;
 let allCards = []; // Store all available cards
 let takenCards = {}; // Track cards taken by others: { cardId: userId }
 
-// Force show game screen immediately (no loading)
+// Debug on screen
+function debugLog(message) {
+    console.log(message);
+    const debugEl = document.getElementById('debug-log');
+    if (debugEl) {
+        debugEl.innerHTML += message + '<br>';
+    }
+}
+
+// Force show game screen immediately
+debugLog('🎮 App starting...');
 setTimeout(() => {
-    console.log('⏰ Timeout: Forcing game screen to show');
+    debugLog('⏰ Showing game screen');
     showScreen('game-screen');
 }, 100);
 let takenCards = {}; // Track cards taken by others: { cardId: userId }
 
 // Initialize app
 async function init() {
-    console.log('🚀 Initializing app...');
+    debugLog('🚀 Init started');
     
     // Get Telegram user data
     const user = tg.initDataUnsafe.user;
     
     if (user) {
-        console.log('✅ Telegram user found:', user.id, user.username);
+        debugLog('✅ User: ' + user.username);
         currentUser = {
             id: user.id,
             telegram_id: user.id,
@@ -42,7 +49,7 @@ async function init() {
             first_name: user.first_name
         };
     } else {
-        console.log('⚠️ No Telegram user, using guest');
+        debugLog('⚠️ No user, using guest');
         currentUser = {
             id: Date.now(),
             telegram_id: Date.now(),
@@ -55,16 +62,18 @@ async function init() {
     updateUI(currentUser, { balance: 0, profit: 0 });
     
     // Show interface immediately
+    debugLog('📺 Showing interface');
     showScreen('game-screen');
     
     // Load data in background
+    debugLog('📊 Loading data...');
     loadGameData().catch(err => {
-        console.error('Failed to load game data:', err);
+        debugLog('❌ Load error: ' + err.message);
     });
     
-    // Register user in background (don't wait)
+    // Register user in background
     registerUser(currentUser).catch(err => {
-        console.error('Failed to register user:', err);
+        debugLog('❌ Register error: ' + err.message);
     });
 }
 
