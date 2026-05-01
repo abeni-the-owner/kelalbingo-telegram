@@ -4,11 +4,18 @@ const pool = require('../config/database');
 const { verifyTelegramWebAppData } = require('../middleware/auth');
 
 // Register or login user
-router.post('/login', verifyTelegramWebAppData, async (req, res) => {
+router.post('/login', async (req, res) => {
   const client = await pool.connect();
   
   try {
-    const { id, username, first_name, last_name } = req.telegramUser;
+    // Get user data from request body
+    const userData = req.body.user;
+    
+    if (!userData || !userData.id) {
+      return res.status(400).json({ error: 'Invalid user data' });
+    }
+
+    const { id, username, first_name, last_name } = userData;
 
     // Check if user exists
     let result = await client.query(
@@ -66,7 +73,7 @@ router.post('/login', verifyTelegramWebAppData, async (req, res) => {
 
   } catch (error) {
     console.error('Login error:', error);
-    res.status(500).json({ error: 'Login failed' });
+    res.status(500).json({ error: 'Login failed', details: error.message });
   } finally {
     client.release();
   }

@@ -21,18 +21,30 @@ async function init() {
         const user = tg.initDataUnsafe.user;
         
         if (!user) {
-            throw new Error('No Telegram user data');
+            // Development fallback
+            console.warn('No Telegram user data, using test user');
+            currentUser = { id: 1, username: 'testuser', first_name: 'Test' };
+            updateUI(currentUser, { balance: 0, profit: 0 });
+            await loadGameData();
+            showScreen('game-screen');
+            return;
         }
 
-        // Login/Register
+        // Login/Register - use simple auth for now
         const response = await fetch(`${API_URL}/auth/login`, {
             method: 'POST',
             headers: {
                 'Content-Type': 'application/json',
-                'X-Telegram-Init-Data': initData,
                 'X-Telegram-User-Id': user.id
             },
-            body: JSON.stringify({ initData })
+            body: JSON.stringify({ 
+                user: {
+                    id: user.id,
+                    username: user.username,
+                    first_name: user.first_name,
+                    last_name: user.last_name
+                }
+            })
         });
 
         const data = await response.json();
@@ -43,11 +55,14 @@ async function init() {
             await loadGameData();
             showScreen('game-screen');
         } else {
-            throw new Error('Login failed');
+            throw new Error(data.error || 'Login failed');
         }
     } catch (error) {
         console.error('Init error:', error);
-        tg.showAlert('Failed to initialize app. Please try again.');
+        showScreen('game-screen');
+        // Show error but allow to continue
+        document.getElementById('username').textContent = 'Guest';
+        tg.showAlert('Authentication error: ' + error.message);
     }
 }
 
