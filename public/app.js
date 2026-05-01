@@ -110,6 +110,10 @@ async function loadCards() {
         });
         const data = await response.json();
         allCards = data.cards; // Store globally
+        
+        // Also load user's selected cards
+        await loadMyCards();
+        
         displayCards(data.cards);
     } catch (error) {
         console.error('Load cards error:', error);
@@ -117,6 +121,29 @@ async function loadCards() {
         if (container) {
             container.innerHTML = '<p class="error">Failed to load cards</p>';
         }
+    }
+}
+
+// Load user's selected cards
+async function loadMyCards() {
+    try {
+        const response = await fetch(`${API_URL}/cards/my-cards`, {
+            headers: {
+                'X-Telegram-User-Id': tg.initDataUnsafe.user?.id || 1
+            }
+        });
+        const data = await response.json();
+        
+        // Update selected cards array
+        selectedCards = data.cards.map(card => ({
+            id: card.id,
+            number: card.card_number
+        }));
+        
+        updateSelectedCards();
+        updateStartButton();
+    } catch (error) {
+        console.error('Load my cards error:', error);
     }
 }
 
@@ -142,25 +169,59 @@ function displayCards(cards) {
 }
 
 // Toggle card selection
-function toggleCardSelection(cardId, cardNumber) {
+async function toggleCardSelection(cardId, cardNumber) {
     const cardIndex = selectedCards.findIndex(c => c.id === cardId);
     
     if (cardIndex > -1) {
-        // Remove card
-        selectedCards.splice(cardIndex, 1);
+        // Deselect card - release it for others
+        try {
+            const response = await fetch(`${API_URL}/cards/deselect`, {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                    'X-Telegram-User-Id': tg.initDataUnsafe.user?.id || 1
+                },
+                body: JSON.stringify({ card_id: cardId })
+            });
+
+            if (response.ok) {
+                selectedCards.splice(cardIndex, 1);
+                updateSelectedCards();
+                updateStartButton();
+                displayCards(allCards);
+            }
+        } catch (error) {
+            console.error('Deselect error:', error);
+        }
     } else {
-        // Add card
-        selectedCards.push({ id: cardId, number: cardNumber });
-    }
-    
-    // Update UI
-    updateSelectedCards();
-    updateStartButton();
-    
-    // Refresh card buttons
-    const card = allCards.find(c => c.id === cardId);
-    if (card) {
-        displayCards(allCards);
+        // Select card - reserve it
+        try {
+            const response = await fetch(`${API_URL}/cards/select`, {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                    'X-Telegram-User-Id': tg.initDataUnsafe.user?.id || 1
+                },
+                body: JSON.stringify({ card_id: cardId })
+            });
+
+            const data = await response.json();
+
+            if (response.ok) {
+                selectedCards.push({ id: cardId, number: cardNumber });
+                updateSelectedCards();
+                updateStartButton();
+                displayCards(allCards);
+            } else {
+                // Card already taken
+                tg.showAlert(data.error || 'Card not available');
+                // Reload cards to get updated list
+                await loadCards();
+            }
+        } catch (error) {
+            console.error('Select error:', error);
+            tg.showAlert('Failed to select card');
+        }
     }
 }
 
