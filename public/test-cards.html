@@ -1,0 +1,145 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Test Cards - KELALBINGO</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            padding: 20px;
+            background: #f5f5f5;
+        }
+
+        .container {
+            max-width: 800px;
+            margin: 0 auto;
+            background: white;
+            padding: 20px;
+            border-radius: 10px;
+        }
+
+        h1 {
+            color: #667eea;
+        }
+
+        .status {
+            padding: 15px;
+            border-radius: 8px;
+            margin: 20px 0;
+        }
+
+        .success {
+            background: #d4edda;
+            color: #155724;
+        }
+
+        .error {
+            background: #f8d7da;
+            color: #721c24;
+        }
+
+        .info {
+            background: #d1ecf1;
+            color: #0c5460;
+        }
+
+        button {
+            background: #667eea;
+            color: white;
+            border: none;
+            padding: 12px 24px;
+            border-radius: 8px;
+            cursor: pointer;
+            font-size: 16px;
+            margin: 5px;
+        }
+
+        button:hover {
+            background: #5568d3;
+        }
+
+        pre {
+            background: #f5f5f5;
+            padding: 15px;
+            border-radius: 5px;
+            overflow-x: auto;
+        }
+    </style>
+</head>
+
+<body>
+    <div class="container">
+        <h1>🃏 Card Database Test</h1>
+
+        <div id="status"></div>
+
+        <button onclick="checkCards()">Check Cards in Database</button>
+        <button onclick="importSampleCards()">Import 50 Sample Cards</button>
+
+        <div id="result"></div>
+    </div>
+
+    <script>
+        async function checkCards() {
+            const status = document.getElementById('status');
+            const result = document.getElementById('result');
+
+            status.innerHTML = '<div class="info">Checking database...</div>';
+            result.innerHTML = '';
+
+            try {
+                const response = await fetch('/api/cards');
+                const data = await response.json();
+
+                if (data.cards && data.cards.length > 0) {
+                    status.innerHTML = `<div class="success">✅ Found ${data.cards.length} cards in database!</div>`;
+                    result.innerHTML = `<pre>${JSON.stringify(data.cards.slice(0, 3), null, 2)}</pre>`;
+                } else {
+                    status.innerHTML = '<div class="error">❌ No cards found in database. Click "Import Sample Cards" to add some.</div>';
+                }
+            } catch (error) {
+                status.innerHTML = `<div class="error">❌ Error: ${error.message}</div>`;
+            }
+        }
+
+        async function importSampleCards() {
+            const status = document.getElementById('status');
+            const result = document.getElementById('result');
+
+            const secret = prompt('Enter admin secret:', 'kelalbingo-admin-secret-2026');
+            if (!secret) return;
+
+            status.innerHTML = '<div class="info">Importing cards...</div>';
+            result.innerHTML = '';
+
+            try {
+                const response = await fetch('/api/admin/import-sample-cards', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'X-Admin-Secret': secret
+                    }
+                });
+
+                const data = await response.json();
+
+                if (data.success) {
+                    status.innerHTML = `<div class="success">✅ ${data.message}</div>`;
+                    result.innerHTML = `<pre>Cards imported: ${data.cards_imported}</pre>`;
+                    setTimeout(checkCards, 1000);
+                } else {
+                    status.innerHTML = `<div class="error">❌ ${data.error}</div>`;
+                }
+            } catch (error) {
+                status.innerHTML = `<div class="error">❌ Error: ${error.message}</div>`;
+            }
+        }
+
+        // Auto-check on load
+        window.onload = checkCards;
+    </script>
+</body>
+
+</html>
