@@ -26,17 +26,24 @@ async function init() {
         const initData = tg.initData;
         const user = tg.initDataUnsafe.user;
         
+        console.log('Telegram user:', user);
+        
         if (!user) {
-            // Development fallback
-            console.warn('No Telegram user data, using test user');
-            currentUser = { id: 1, username: 'testuser', first_name: 'Test' };
+            // Development fallback - show interface anyway
+            console.warn('No Telegram user data, using guest mode');
+            currentUser = { 
+                id: Math.floor(Math.random() * 1000000), 
+                telegram_id: Math.floor(Math.random() * 1000000),
+                username: 'Guest', 
+                first_name: 'Guest' 
+            };
             updateUI(currentUser, { balance: 0, profit: 0 });
             await loadGameData();
             showScreen('game-screen');
             return;
         }
 
-        // Login/Register - use simple auth for now
+        // Login/Register - use simple auth
         const response = await fetch(`${API_URL}/auth/login`, {
             method: 'POST',
             headers: {
@@ -53,6 +60,10 @@ async function init() {
             })
         });
 
+        if (!response.ok) {
+            throw new Error(`Login failed: ${response.status}`);
+        }
+
         const data = await response.json();
         
         if (data.success) {
@@ -65,10 +76,16 @@ async function init() {
         }
     } catch (error) {
         console.error('Init error:', error);
+        // Show interface anyway with guest mode
+        currentUser = { 
+            id: Math.floor(Math.random() * 1000000),
+            telegram_id: Math.floor(Math.random() * 1000000),
+            username: 'Guest', 
+            first_name: 'Guest' 
+        };
+        updateUI(currentUser, { balance: 0, profit: 0 });
+        await loadGameData();
         showScreen('game-screen');
-        // Show error but allow to continue
-        document.getElementById('username').textContent = 'Guest';
-        tg.showAlert('Authentication error: ' + error.message);
     }
 }
 
@@ -110,9 +127,14 @@ async function loadCards() {
     try {
         const response = await fetch(`${API_URL}/cards`, {
             headers: {
-                'X-Telegram-User-Id': tg.initDataUnsafe.user?.id || 1
+                'X-Telegram-User-Id': tg.initDataUnsafe.user?.id || currentUser?.telegram_id || 1
             }
         });
+        
+        if (!response.ok) {
+            throw new Error(`HTTP ${response.status}`);
+        }
+        
         const data = await response.json();
         allCards = data.cards; // Store globally
         
@@ -124,7 +146,7 @@ async function loadCards() {
         console.error('Load cards error:', error);
         const container = document.getElementById('cards-grid');
         if (container) {
-            container.innerHTML = '<p class="error">Failed to load cards</p>';
+            container.innerHTML = `<p class="error">Failed to load cards. <button onclick="loadCards()" class="btn btn-secondary">Retry</button></p>`;
         }
     }
 }
@@ -471,6 +493,11 @@ socket.on('connect', () => {
             userId: currentUser.telegram_id 
         });
     }
+});
+
+socket.on('connect_error', (error) => {
+    console.error('Socket connection error:', error);
+    // Continue without real-time features
 });
 
 socket.on('disconnect', () => {
