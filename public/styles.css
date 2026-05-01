@@ -267,3 +267,118 @@ body {
     border-radius: 5px;
     cursor: pointer;
 }
+
+/* Card Preview */
+.card-preview {
+    font-size: 12px;
+    color: var(--tg-theme-hint-color, #999);
+    margin-top: 5px;
+}
+
+/* Modal */
+.modal {
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    background: rgba(0, 0, 0, 0.8);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    z-index: 1000;
+    padding: 20px;
+}
+
+.modal-content {
+    background: var(--tg-theme-bg-color, #ffffff);
+    border-radius: 15px;
+    max-width: 500px;
+    width: 100%;
+    max-height: 90vh;
+    overflow-y: auto;
+    padding: 20px;
+}
+
+.modal-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 20px;
+}
+
+.modal-header h3 {
+    margin: 0;
+    color: var(--tg-theme-text-color, #000);
+}
+
+.close-btn {
+    background: none;
+    border: none;
+    font-size: 30px;
+    cursor: pointer;
+    color: var(--tg-theme-hint-color, #999);
+    padding: 0;
+    width: 30px;
+    height: 30px;
+    line-height: 1;
+}
+
+/* Bingo Card */
+.bingo-card {
+    background: white;
+    border: 3px solid var(--tg-theme-button-color, #3390ec);
+    border-radius: 10px;
+    padding: 10px;
+    margin-bottom: 20px;
+}
+
+.bingo-header {
+    display: grid;
+    grid-template-columns: repeat(5, 1fr);
+    gap: 5px;
+    margin-bottom: 5px;
+}
+
+.bingo-letter {
+    background: var(--tg-theme-button-color, #3390ec);
+    color: white;
+    text-align: center;
+    padding: 10px;
+    font-weight: bold;
+    font-size: 18px;
+    border-radius: 5px;
+}
+
+.bingo-row {
+    display: grid;
+    grid-template-columns: repeat(5, 1fr);
+    gap: 5px;
+    margin-bottom: 5px;
+}
+
+.bingo-cell {
+    background: #f5f5f5;
+    border: 2px solid #ddd;
+    text-align: center;
+    padding: 15px 5px;
+    font-weight: bold;
+    font-size: 16px;
+    border-radius: 5px;
+    color: #333;
+}
+
+.bingo-cell.free-space {
+    background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+    color: white;
+    font-size: 12px;
+}
+
+.modal-actions {
+    display: flex;
+    gap: 10px;
+}
+
+.modal-actions .btn {
+    flex: 1;
+}

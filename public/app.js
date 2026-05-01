@@ -124,10 +124,78 @@ function displayCards(cards) {
     }
 
     container.innerHTML = cards.map(card => `
-        <div class="card-item" data-card-id="${card.id}" onclick="selectCard(${card.id}, ${card.card_number})">
+        <div class="card-item" data-card-id="${card.id}" onclick="viewCard(${card.id}, ${card.card_number}, '${JSON.stringify(card).replace(/'/g, "&apos;")}')">
             <div class="card-number">Card #${card.card_number}</div>
+            <div class="card-preview">Click to view</div>
         </div>
     `).join('');
+}
+
+// View card details
+function viewCard(cardId, cardNumber, cardDataStr) {
+    const cardData = typeof cardDataStr === 'string' ? JSON.parse(cardDataStr) : cardDataStr;
+    
+    const modalHtml = `
+        <div class="modal" id="card-modal" onclick="closeModal()">
+            <div class="modal-content" onclick="event.stopPropagation()">
+                <div class="modal-header">
+                    <h3>Card #${cardNumber}</h3>
+                    <button class="close-btn" onclick="closeModal()">×</button>
+                </div>
+                <div class="bingo-card">
+                    <div class="bingo-header">
+                        <div class="bingo-letter">B</div>
+                        <div class="bingo-letter">I</div>
+                        <div class="bingo-letter">N</div>
+                        <div class="bingo-letter">G</div>
+                        <div class="bingo-letter">O</div>
+                    </div>
+                    ${generateCardRows(cardData)}
+                </div>
+                <div class="modal-actions">
+                    <button class="btn btn-primary" onclick="selectCardFromModal(${cardId}, ${cardNumber})">
+                        Select This Card
+                    </button>
+                    <button class="btn btn-secondary" onclick="closeModal()">
+                        Close
+                    </button>
+                </div>
+            </div>
+        </div>
+    `;
+    
+    document.body.insertAdjacentHTML('beforeend', modalHtml);
+}
+
+// Generate card rows
+function generateCardRows(card) {
+    let html = '';
+    for (let row = 0; row < 5; row++) {
+        html += '<div class="bingo-row">';
+        html += `<div class="bingo-cell">${card.b_column[row]}</div>`;
+        html += `<div class="bingo-cell">${card.i_column[row]}</div>`;
+        html += `<div class="bingo-cell ${card.n_column[row] === 0 ? 'free-space' : ''}">${card.n_column[row] === 0 ? 'FREE' : card.n_column[row]}</div>`;
+        html += `<div class="bingo-cell">${card.g_column[row]}</div>`;
+        html += `<div class="bingo-cell">${card.o_column[row]}</div>`;
+        html += '</div>';
+    }
+    return html;
+}
+
+// Close modal
+function closeModal() {
+    const modal = document.getElementById('card-modal');
+    if (modal) {
+        modal.remove();
+    }
+}
+
+// Select card from modal
+function selectCardFromModal(cardId, cardNumber) {
+    selectCard(cardId, cardNumber);
+    closeModal();
+    // Switch to play tab
+    document.querySelector('[data-tab="play"]').click();
 }
 
 // Select card
