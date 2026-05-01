@@ -26,7 +26,15 @@
 
         <!-- Main Game Screen -->
         <div id="game-screen" class="screen">
-            <!-- Header -->
+            <!-- Card Selection Section (Top) -->
+            <div class="card-selection-section">
+                <h3 class="section-title">🃏 Select Your Cards</h3>
+                <div id="cards-grid" class="cards-grid-compact">
+                    <p class="loading">Loading cards...</p>
+                </div>
+            </div>
+
+            <!-- User Info & Balance -->
             <div class="header">
                 <div class="user-info">
                     <span id="username">User</span>
@@ -51,30 +59,19 @@
             <!-- Navigation Tabs -->
             <div class="tabs">
                 <button class="tab active" data-tab="play">🎲 Play</button>
-                <button class="tab" data-tab="cards">🃏 Cards</button>
                 <button class="tab" data-tab="history">📊 History</button>
             </div>
 
             <!-- Play Tab -->
             <div id="play-tab" class="tab-content active">
                 <div class="play-container">
-                    <h3>Select Your Cards</h3>
+                    <h3>Selected Cards</h3>
                     <div id="selected-cards" class="selected-cards">
                         <p class="empty-state">No cards selected</p>
                     </div>
                     <button id="start-game-btn" class="btn btn-primary" disabled>
                         Start Game
                     </button>
-                </div>
-            </div>
-
-            <!-- Cards Tab -->
-            <div id="cards-tab" class="tab-content">
-                <div class="cards-container">
-                    <h3>Available Bingo Cards</h3>
-                    <div id="cards-list" class="cards-grid">
-                        <p class="loading">Loading cards...</p>
-                    </div>
                 </div>
             </div>
 

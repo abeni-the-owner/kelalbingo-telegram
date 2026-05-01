@@ -117,21 +117,48 @@ async function loadCards() {
     }
 }
 
-// Display cards
+// Display cards in compact grid
 function displayCards(cards) {
-    const container = document.getElementById('cards-list');
+    const container = document.getElementById('cards-grid');
     
     if (cards.length === 0) {
         container.innerHTML = '<p class="empty-state">No cards available</p>';
         return;
     }
 
-    container.innerHTML = cards.map(card => `
-        <div class="card-item" data-card-id="${card.id}" onclick="viewCard(${card.id})">
-            <div class="card-number">Card #${card.card_number}</div>
-            <div class="card-preview">Click to view</div>
-        </div>
-    `).join('');
+    container.innerHTML = cards.map(card => {
+        const isSelected = selectedCards.some(c => c.id === card.id);
+        return `
+            <button class="card-btn-compact ${isSelected ? 'selected' : ''}" 
+                    data-card-id="${card.id}" 
+                    onclick="toggleCardSelection(${card.id}, ${card.card_number})">
+                ${card.card_number}
+            </button>
+        `;
+    }).join('');
+}
+
+// Toggle card selection
+function toggleCardSelection(cardId, cardNumber) {
+    const cardIndex = selectedCards.findIndex(c => c.id === cardId);
+    
+    if (cardIndex > -1) {
+        // Remove card
+        selectedCards.splice(cardIndex, 1);
+    } else {
+        // Add card
+        selectedCards.push({ id: cardId, number: cardNumber });
+    }
+    
+    // Update UI
+    updateSelectedCards();
+    updateStartButton();
+    
+    // Refresh card buttons
+    const card = allCards.find(c => c.id === cardId);
+    if (card) {
+        displayCards(allCards);
+    }
 }
 
 // View card details
@@ -226,25 +253,23 @@ function updateSelectedCards() {
     const container = document.getElementById('selected-cards');
     
     if (selectedCards.length === 0) {
-        container.innerHTML = '<p class="empty-state">No cards selected</p>';
+        container.innerHTML = '<p class="empty-state">No cards selected. Tap card numbers above to select.</p>';
         return;
     }
 
     container.innerHTML = selectedCards.map(card => `
         <div class="selected-card">
             <span>Card #${card.number}</span>
-            <button class="remove-card" onclick="removeCard(${card.id})">✕ Remove</button>
+            <button class="remove-card" onclick="removeCard(${card.id})">✕</button>
         </div>
     `).join('');
 }
 
 // Remove card
 function removeCard(cardId) {
-    const cardIndex = selectedCards.findIndex(c => c.id === cardId);
-    if (cardIndex > -1) {
-        selectedCards.splice(cardIndex, 1);
-        updateSelectedCards();
-        updateStartButton();
+    const card = selectedCards.find(c => c.id === cardId);
+    if (card) {
+        toggleCardSelection(cardId, card.number);
     }
 }
 
@@ -350,7 +375,11 @@ document.querySelectorAll('.tab').forEach(tab => {
 
 // Start game button
 document.getElementById('start-game-btn').addEventListener('click', () => {
-    tg.showAlert('Game functionality coming soon!');
+    if (selectedCards.length === 0) {
+        tg.showAlert('Please select at least one card');
+        return;
+    }
+    tg.showAlert(`Starting game with ${selectedCards.length} card(s)!\n\nGame functionality coming soon!`);
 });
 
 // Initialize on load
