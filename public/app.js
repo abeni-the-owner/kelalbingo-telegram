@@ -3,6 +3,9 @@ const tg = window.Telegram.WebApp;
 tg.expand();
 tg.ready();
 
+console.log('🎮 KELALBINGO Starting...');
+console.log('Telegram WebApp:', tg);
+
 // API Configuration
 const API_URL = window.location.origin + '/api';
 
@@ -15,6 +18,12 @@ let selectedCards = [];
 let currentRound = 1;
 let allCards = []; // Store all available cards
 let takenCards = {}; // Track cards taken by others: { cardId: userId }
+
+// Force show game screen immediately (no loading)
+setTimeout(() => {
+    console.log('⏰ Timeout: Forcing game screen to show');
+    showScreen('game-screen');
+}, 100);
 let takenCards = {}; // Track cards taken by others: { cardId: userId }
 
 // Initialize app
@@ -456,8 +465,18 @@ function displayStats(stats) {
 
 // Show screen
 function showScreen(screenId) {
-    document.querySelectorAll('.screen').forEach(s => s.classList.remove('active'));
-    document.getElementById(screenId).classList.add('active');
+    console.log('📺 Showing screen:', screenId);
+    document.querySelectorAll('.screen').forEach(s => {
+        s.classList.remove('active');
+        console.log('  Hiding:', s.id);
+    });
+    const screen = document.getElementById(screenId);
+    if (screen) {
+        screen.classList.add('active');
+        console.log('  ✅ Showing:', screenId);
+    } else {
+        console.error('  ❌ Screen not found:', screenId);
+    }
 }
 
 // Tab switching
