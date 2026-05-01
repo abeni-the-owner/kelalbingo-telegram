@@ -1,0 +1,305 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Admin - Database Setup</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            padding: 20px;
+        }
+
+        .container {
+            background: white;
+            border-radius: 20px;
+            padding: 40px;
+            max-width: 600px;
+            width: 100%;
+            box-shadow: 0 20px 60px rgba(0, 0, 0, 0.3);
+        }
+
+        h1 {
+            color: #667eea;
+            margin-bottom: 10px;
+        }
+
+        .subtitle {
+            color: #666;
+            margin-bottom: 30px;
+        }
+
+        .input-group {
+            margin-bottom: 20px;
+        }
+
+        label {
+            display: block;
+            margin-bottom: 8px;
+            color: #333;
+            font-weight: 500;
+        }
+
+        input {
+            width: 100%;
+            padding: 12px;
+            border: 2px solid #e0e0e0;
+            border-radius: 8px;
+            font-size: 14px;
+            transition: border 0.3s;
+        }
+
+        input:focus {
+            outline: none;
+            border-color: #667eea;
+        }
+
+        .btn {
+            width: 100%;
+            padding: 15px;
+            border: none;
+            border-radius: 8px;
+            font-size: 16px;
+            font-weight: bold;
+            cursor: pointer;
+            transition: all 0.3s;
+            margin-bottom: 10px;
+        }
+
+        .btn-primary {
+            background: #667eea;
+            color: white;
+        }
+
+        .btn-primary:hover {
+            background: #5568d3;
+            transform: translateY(-2px);
+            box-shadow: 0 5px 15px rgba(102, 126, 234, 0.4);
+        }
+
+        .btn-secondary {
+            background: #f0f0f0;
+            color: #333;
+        }
+
+        .btn-secondary:hover {
+            background: #e0e0e0;
+        }
+
+        .btn:disabled {
+            opacity: 0.5;
+            cursor: not-allowed;
+        }
+
+        .result {
+            margin-top: 20px;
+            padding: 15px;
+            border-radius: 8px;
+            display: none;
+        }
+
+        .result.success {
+            background: #d4edda;
+            color: #155724;
+            border: 1px solid #c3e6cb;
+        }
+
+        .result.error {
+            background: #f8d7da;
+            color: #721c24;
+            border: 1px solid #f5c6cb;
+        }
+
+        .result.show {
+            display: block;
+        }
+
+        .loading {
+            display: none;
+            text-align: center;
+            margin-top: 20px;
+        }
+
+        .loading.show {
+            display: block;
+        }
+
+        .spinner {
+            border: 4px solid #f3f3f3;
+            border-top: 4px solid #667eea;
+            border-radius: 50%;
+            width: 40px;
+            height: 40px;
+            animation: spin 1s linear infinite;
+            margin: 0 auto 10px;
+        }
+
+        @keyframes spin {
+            0% {
+                transform: rotate(0deg);
+            }
+
+            100% {
+                transform: rotate(360deg);
+            }
+        }
+
+        .info {
+            background: #e7f3ff;
+            padding: 15px;
+            border-radius: 8px;
+            margin-bottom: 20px;
+            border-left: 4px solid #2196F3;
+        }
+
+        .info h3 {
+            color: #1976D2;
+            margin-bottom: 8px;
+        }
+
+        .info p {
+            color: #555;
+            font-size: 14px;
+            line-height: 1.6;
+        }
+
+        pre {
+            background: #f5f5f5;
+            padding: 10px;
+            border-radius: 5px;
+            overflow-x: auto;
+            font-size: 12px;
+        }
+    </style>
+</head>
+
+<body>
+    <div class="container">
+        <h1>🔧 Database Setup</h1>
+        <p class="subtitle">Initialize your production database</p>
+
+        <div class="info">
+            <h3>📋 Instructions</h3>
+            <p>1. Get your ADMIN_SECRET from Render environment variables<br>
+                2. Enter it below and click "Initialize Database"<br>
+                3. Wait for confirmation</p>
+        </div>
+
+        <div class="input-group">
+            <label for="secret">Admin Secret:</label>
+            <input type="password" id="secret" placeholder="Enter admin secret" value="kelalbingo-admin-secret-2026">
+        </div>
+
+        <button class="btn btn-primary" onclick="initDatabase()">
+            🚀 Initialize Database
+        </button>
+
+        <button class="btn btn-secondary" onclick="checkStatus()">
+            📊 Check Database Status
+        </button>
+
+        <div class="loading" id="loading">
+            <div class="spinner"></div>
+            <p>Processing...</p>
+        </div>
+
+        <div class="result" id="result"></div>
+    </div>
+
+    <script>
+        async function initDatabase() {
+            const secret = document.getElementById('secret').value;
+            const loading = document.getElementById('loading');
+            const result = document.getElementById('result');
+            const btn = event.target;
+
+            if (!secret) {
+                showResult('error', 'Please enter admin secret');
+                return;
+            }
+
+            btn.disabled = true;
+            loading.classList.add('show');
+            result.classList.remove('show');
+
+            try {
+                const response = await fetch('/api/admin/init-database', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'X-Admin-Secret': secret
+                    }
+                });
+
+                const data = await response.json();
+
+                if (response.ok && data.success) {
+                    showResult('success',
+                        `✅ ${data.message}\n\nTables created:\n${data.tables.join(', ')}`
+                    );
+                } else {
+                    showResult('error', `❌ ${data.error || 'Failed to initialize database'}`);
+                }
+            } catch (error) {
+                showResult('error', `❌ Error: ${error.message}`);
+            } finally {
+                btn.disabled = false;
+                loading.classList.remove('show');
+            }
+        }
+
+        async function checkStatus() {
+            const secret = document.getElementById('secret').value;
+            const loading = document.getElementById('loading');
+            const result = document.getElementById('result');
+            const btn = event.target;
+
+            if (!secret) {
+                showResult('error', 'Please enter admin secret');
+                return;
+            }
+
+            btn.disabled = true;
+            loading.classList.add('show');
+            result.classList.remove('show');
+
+            try {
+                const response = await fetch(`/api/admin/db-status?secret=${secret}`);
+                const data = await response.json();
+
+                if (response.ok && data.success) {
+                    showResult('success',
+                        `✅ Database Status\n\nTables found: ${data.count}\n\n${data.tables.join(', ')}`
+                    );
+                } else {
+                    showResult('error', `❌ ${data.error || 'Failed to check status'}`);
+                }
+            } catch (error) {
+                showResult('error', `❌ Error: ${error.message}`);
+            } finally {
+                btn.disabled = false;
+                loading.classList.remove('show');
+            }
+        }
+
+        function showResult(type, message) {
+            const result = document.getElementById('result');
+            result.className = `result ${type} show`;
+            result.innerHTML = `<pre>${message}</pre>`;
+        }
+    </script>
+</body>
+
+</html>
