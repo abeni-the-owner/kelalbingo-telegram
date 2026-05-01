@@ -1,36 +1,60 @@
 // Initialize Telegram Web App
-const tg = window.Telegram.WebApp;
+const tg = window.Telegram?.WebApp || { initDataUnsafe: {}, expand: () => {}, ready: () => {} };
 tg.expand();
 tg.ready();
 
 // API Configuration
 const API_URL = window.location.origin + '/api';
 
-// Initialize Socket.IO
-const socket = io(window.location.origin);
+// Initialize Socket.IO (with error handling)
+let socket;
+try {
+    socket = io(window.location.origin, { 
+        transports: ['websocket', 'polling'],
+        timeout: 5000
+    });
+} catch (e) {
+    console.error('Socket.IO error:', e);
+    socket = { 
+        on: () => {}, 
+        emit: () => {},
+        connected: false 
+    };
+}
 
 // State
 let currentUser = null;
 let selectedCards = [];
 let currentRound = 1;
-let allCards = []; // Store all available cards
-let takenCards = {}; // Track cards taken by others: { cardId: userId }
+let allCards = [];
+let takenCards = {};
 
 // Debug on screen
 function debugLog(message) {
     console.log(message);
-    const debugEl = document.getElementById('debug-log');
-    if (debugEl) {
-        debugEl.innerHTML += message + '<br>';
+    try {
+        const debugEl = document.getElementById('debug-log');
+        if (debugEl) {
+            debugEl.innerHTML += message + '<br>';
+        }
+    } catch (e) {
+        console.error('Debug log error:', e);
     }
 }
 
 // Force show game screen immediately
 debugLog('🎮 App starting...');
 setTimeout(() => {
-    debugLog('⏰ Showing game screen');
-    showScreen('game-screen');
-}, 100);
+    debugLog('⏰ Showing game screen NOW');
+    try {
+        showScreen('game-screen');
+    } catch (e) {
+        debugLog('❌ Error: ' + e.message);
+        // Force show by manipulating DOM directly
+        document.getElementById('loading').style.display = 'none';
+        document.getElementById('game-screen').style.display = 'block';
+    }
+}, 50);
 let takenCards = {}; // Track cards taken by others: { cardId: userId }
 
 // Initialize app
