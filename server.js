@@ -17,8 +17,12 @@ const io = socketIO(server, {
 
 const PORT = process.env.PORT || 3000;
 
-// Make io accessible to routes
+// In-memory storage for real-time card selections
+const cardSelections = new Map(); // roundNumber -> { cardId: userId }
+
+// Make io and cardSelections accessible to routes
 app.set('io', io);
+app.set('cardSelections', cardSelections);
 
 // Middleware
 app.use(helmet({
@@ -70,9 +74,64 @@ io.on('connection', (socket) => {
   console.log('👤 User connected:', socket.id);
 
   // User joins a room (round-based)
-  socket.on('join-round', (roundNumber) => {
+  socket.on('join-round', (data) => {
+    const { roundNumber, userId } = data;
     socket.join(`round-${roundNumber}`);
-    console.log(`User ${socket.id} joined round ${roundNumber}`);
+    socket.userId = userId;
+    console.log(`User ${userId} joined round ${roundNumber}`);
+    
+    // Send current card selections for this round
+    const roundSelections = cardSelections.get(roundNumber) || {};
+    socket.emit('current-selections', roundSelections);
+  });
+
+  // User selects a card (real-time, no database)
+  socket.on('select-card', (data) => {
+    const { roundNumber, cardId, cardNumber, userId } = data;
+    
+    // Get or create round selections
+    if (!cardSelections.has(roundNumber)) {
+      cardSelections.set(roundNumber, {});
+    }
+    
+    const roundSelections = cardSelections.get(roundNumber);
+    
+    // Check if card is already taken
+    if (roundSelections[cardId] && roundSelections[cardId] !== userId) {
+      socket.emit('card-taken', { cardId, cardNumber });
+      return;
+    }
+    
+    // Reserve card for this user
+    roundSelections[cardId] = userId;
+    
+    // Broadcast to all users in this round
+    io.to(`round-${roundNumber}`).emit('card-selected', {
+      cardId,
+      cardNumber,
+      userId
+    });
+    
+    console.log(`Card ${cardNumber} selected by user ${userId} in round ${roundNumber}`);
+  });
+
+  // User deselects a card
+  socket.on('deselect-card', (data) => {
+    const { roundNumber, cardId, cardNumber, userId } = data;
+    
+    const roundSelections = cardSelections.get(roundNumber);
+    if (roundSelections && roundSelections[cardId] === userId) {
+      delete roundSelections[cardId];
+      
+      // Broadcast to all users
+      io.to(`round-${roundNumber}`).emit('card-deselected', {
+        cardId,
+        cardNumber,
+        userId
+      });
+      
+      console.log(`Card ${cardNumber} released by user ${userId}`);
+    }
   });
 
   // User disconnects
