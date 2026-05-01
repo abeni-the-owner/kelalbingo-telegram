@@ -19,73 +19,67 @@ let takenCards = {}; // Track cards taken by others: { cardId: userId }
 
 // Initialize app
 async function init() {
-    try {
-        showScreen('loading');
-        
-        // Get Telegram user data
-        const initData = tg.initData;
-        const user = tg.initDataUnsafe.user;
-        
-        console.log('Telegram user:', user);
-        
-        if (!user) {
-            // Development fallback - show interface anyway
-            console.warn('No Telegram user data, using guest mode');
-            currentUser = { 
-                id: Math.floor(Math.random() * 1000000), 
-                telegram_id: Math.floor(Math.random() * 1000000),
-                username: 'Guest', 
-                first_name: 'Guest' 
-            };
-            updateUI(currentUser, { balance: 0, profit: 0 });
-            await loadGameData();
-            showScreen('game-screen');
-            return;
-        }
+    console.log('🚀 Initializing app...');
+    
+    // Get Telegram user data
+    const user = tg.initDataUnsafe.user;
+    
+    if (user) {
+        console.log('✅ Telegram user found:', user.id, user.username);
+        currentUser = {
+            id: user.id,
+            telegram_id: user.id,
+            username: user.username || user.first_name,
+            first_name: user.first_name
+        };
+    } else {
+        console.log('⚠️ No Telegram user, using guest');
+        currentUser = {
+            id: Date.now(),
+            telegram_id: Date.now(),
+            username: 'Guest',
+            first_name: 'Guest'
+        };
+    }
+    
+    // Update UI immediately
+    updateUI(currentUser, { balance: 0, profit: 0 });
+    
+    // Show interface immediately
+    showScreen('game-screen');
+    
+    // Load data in background
+    loadGameData().catch(err => {
+        console.error('Failed to load game data:', err);
+    });
+    
+    // Register user in background (don't wait)
+    registerUser(currentUser).catch(err => {
+        console.error('Failed to register user:', err);
+    });
+}
 
-        // Login/Register - use simple auth
+// Register user in database (background task)
+async function registerUser(user) {
+    try {
         const response = await fetch(`${API_URL}/auth/login`, {
             method: 'POST',
             headers: {
                 'Content-Type': 'application/json',
-                'X-Telegram-User-Id': user.id
+                'X-Telegram-User-Id': user.telegram_id
             },
-            body: JSON.stringify({ 
-                user: {
-                    id: user.id,
-                    username: user.username,
-                    first_name: user.first_name,
-                    last_name: user.last_name
-                }
-            })
+            body: JSON.stringify({ user })
         });
-
-        if (!response.ok) {
-            throw new Error(`Login failed: ${response.status}`);
-        }
-
-        const data = await response.json();
         
-        if (data.success) {
-            currentUser = data.user;
-            updateUI(data.user, data.balance);
-            await loadGameData();
-            showScreen('game-screen');
-        } else {
-            throw new Error(data.error || 'Login failed');
+        if (response.ok) {
+            const data = await response.json();
+            if (data.balance) {
+                updateUI(user, data.balance);
+            }
+            console.log('✅ User registered');
         }
     } catch (error) {
-        console.error('Init error:', error);
-        // Show interface anyway with guest mode
-        currentUser = { 
-            id: Math.floor(Math.random() * 1000000),
-            telegram_id: Math.floor(Math.random() * 1000000),
-            username: 'Guest', 
-            first_name: 'Guest' 
-        };
-        updateUI(currentUser, { balance: 0, profit: 0 });
-        await loadGameData();
-        showScreen('game-screen');
+        console.error('Register error:', error);
     }
 }
 
@@ -98,12 +92,18 @@ function updateUI(user, balance) {
 
 // Load game data
 async function loadGameData() {
-    await Promise.all([
-        loadRound(),
-        loadCards(),
-        loadHistory(),
-        loadStats()
-    ]);
+    console.log('📊 Loading game data...');
+    try {
+        await Promise.all([
+            loadRound(),
+            loadCards(),
+            loadHistory(),
+            loadStats()
+        ]);
+        console.log('✅ Game data loaded');
+    } catch (error) {
+        console.error('❌ Failed to load game data:', error);
+    }
 }
 
 // Load current round
@@ -111,14 +111,17 @@ async function loadRound() {
     try {
         const response = await fetch(`${API_URL}/game/round`, {
             headers: {
-                'X-Telegram-User-Id': tg.initDataUnsafe.user.id
+                'X-Telegram-User-Id': currentUser?.telegram_id || 1
             }
         });
         const data = await response.json();
         currentRound = data.round.round_number;
         document.getElementById('round-number').textContent = currentRound;
+        console.log('✅ Round loaded:', currentRound);
     } catch (error) {
         console.error('Load round error:', error);
+        currentRound = 1;
+        document.getElementById('round-number').textContent = '1';
     }
 }
 
