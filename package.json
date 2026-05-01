@@ -6,7 +6,9 @@
     "scripts": {
         "start": "node server.js",
         "dev": "nodemon server.js",
-        "init-db": "node scripts/init-database.js"
+        "init-db": "node scripts/init-database.js",
+        "import-cards": "node scripts/import-cards.js",
+        "import-cards-prod": "node scripts/import-cards-production.js"
     },
     "keywords": [
         "telegram",

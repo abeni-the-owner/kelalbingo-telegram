@@ -165,10 +165,13 @@ router.get('/db-status', checkAdmin, async (req, res) => {
       ORDER BY table_name
     `);
 
+    const cardCount = await pool.query('SELECT COUNT(*) FROM bingo_cards');
+
     res.json({
       success: true,
       tables: result.rows.map(r => r.table_name),
-      count: result.rows.length
+      count: result.rows.length,
+      cards_count: parseInt(cardCount.rows[0].count)
     });
   } catch (error) {
     res.status(500).json({
@@ -177,5 +180,67 @@ router.get('/db-status', checkAdmin, async (req, res) => {
     });
   }
 });
+
+// Import sample cards
+router.post('/import-sample-cards', checkAdmin, async (req, res) => {
+  const client = await pool.connect();
+  
+  try {
+    console.log('🔄 Importing sample bingo cards...');
+
+    // Generate 50 sample cards
+    let imported = 0;
+    
+    for (let cardNum = 1; cardNum <= 50; cardNum++) {
+      // Generate random bingo card
+      const bColumn = generateColumn(1, 15);
+      const iColumn = generateColumn(16, 30);
+      const nColumn = generateColumn(31, 45);
+      const gColumn = generateColumn(46, 60);
+      const oColumn = generateColumn(61, 75);
+      
+      // Set center as free space (0)
+      nColumn[2] = 0;
+
+      await client.query(
+        `INSERT INTO bingo_cards (card_number, b_column, i_column, n_column, g_column, o_column)
+         VALUES ($1, $2, $3, $4, $5, $6)
+         ON CONFLICT (card_number) DO NOTHING`,
+        [cardNum, bColumn, iColumn, nColumn, gColumn, oColumn]
+      );
+      
+      imported++;
+    }
+
+    console.log(`✅ Imported ${imported} sample cards`);
+
+    res.json({
+      success: true,
+      message: `Successfully imported ${imported} sample bingo cards`,
+      cards_imported: imported
+    });
+
+  } catch (error) {
+    console.error('❌ Error importing cards:', error);
+    res.status(500).json({
+      error: 'Failed to import cards',
+      details: error.message
+    });
+  } finally {
+    client.release();
+  }
+});
+
+// Helper function to generate random column
+function generateColumn(min, max) {
+  const numbers = [];
+  while (numbers.length < 5) {
+    const num = Math.floor(Math.random() * (max - min + 1)) + min;
+    if (!numbers.includes(num)) {
+      numbers.push(num);
+    }
+  }
+  return numbers.sort((a, b) => a - b);
+}
 
 module.exports = router;

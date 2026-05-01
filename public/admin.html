@@ -210,6 +210,10 @@
             📊 Check Database Status
         </button>
 
+        <button class="btn btn-secondary" onclick="importCards()">
+            🃏 Import Sample Cards (50 cards)
+        </button>
+
         <div class="loading" id="loading">
             <div class="spinner"></div>
             <p>Processing...</p>
@@ -281,10 +285,55 @@
 
                 if (response.ok && data.success) {
                     showResult('success',
-                        `✅ Database Status\n\nTables found: ${data.count}\n\n${data.tables.join(', ')}`
+                        `✅ Database Status\n\nTables found: ${data.count}\nBingo cards: ${data.cards_count || 0}\n\n${data.tables.join(', ')}`
                     );
                 } else {
                     showResult('error', `❌ ${data.error || 'Failed to check status'}`);
+                }
+            } catch (error) {
+                showResult('error', `❌ Error: ${error.message}`);
+            } finally {
+                btn.disabled = false;
+                loading.classList.remove('show');
+            }
+        }
+
+        async function importCards() {
+            const secret = document.getElementById('secret').value;
+            const loading = document.getElementById('loading');
+            const result = document.getElementById('result');
+            const btn = event.target;
+
+            if (!secret) {
+                showResult('error', 'Please enter admin secret');
+                return;
+            }
+
+            if (!confirm('Import 50 sample bingo cards? This will add cards to the database.')) {
+                return;
+            }
+
+            btn.disabled = true;
+            loading.classList.add('show');
+            result.classList.remove('show');
+
+            try {
+                const response = await fetch('/api/admin/import-sample-cards', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'X-Admin-Secret': secret
+                    }
+                });
+
+                const data = await response.json();
+
+                if (response.ok && data.success) {
+                    showResult('success',
+                        `✅ ${data.message}\n\nCards imported: ${data.cards_imported}`
+                    );
+                } else {
+                    showResult('error', `❌ ${data.error || 'Failed to import cards'}`);
                 }
             } catch (error) {
                 showResult('error', `❌ Error: ${error.message}`);
