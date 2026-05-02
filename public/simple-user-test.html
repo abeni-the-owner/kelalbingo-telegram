@@ -1,0 +1,128 @@
+<!DOCTYPE html>
+<html>
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>User Test</title>
+    <script src="https://telegram.org/js/telegram-web-app.js"></script>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            background: #000;
+            color: #fff;
+            padding: 20px;
+            font-size: 16px;
+        }
+
+        .result {
+            background: #333;
+            padding: 15px;
+            margin: 10px 0;
+            border-radius: 5px;
+            border-left: 4px solid #0f0;
+        }
+
+        .error {
+            border-left-color: #f00;
+        }
+    </style>
+</head>
+
+<body>
+    <h1>🔍 Simple User Test</h1>
+
+    <div id="results">
+        <div class="result">Loading...</div>
+    </div>
+
+    <script>
+        function addResult(message, isError = false) {
+            const div = document.createElement('div');
+            div.className = isError ? 'result error' : 'result';
+            div.innerHTML = message;
+            document.getElementById('results').appendChild(div);
+        }
+
+        // Clear loading
+        document.getElementById('results').innerHTML = '';
+
+        // Test 1: Check if Telegram object exists
+        addResult(`1. window.Telegram exists: ${!!window.Telegram}`);
+
+        if (window.Telegram) {
+            addResult(`2. window.Telegram.WebApp exists: ${!!window.Telegram.WebApp}`);
+
+            if (window.Telegram.WebApp) {
+                const tg = window.Telegram.WebApp;
+
+                // Initialize
+                try {
+                    tg.ready();
+                    tg.expand();
+                    addResult(`3. WebApp initialized successfully`);
+                } catch (e) {
+                    addResult(`3. WebApp init error: ${e.message}`, true);
+                }
+
+                // Check version
+                addResult(`4. Telegram version: ${tg.version || 'Unknown'}`);
+                addResult(`5. Platform: ${tg.platform || 'Unknown'}`);
+
+                // Check initData
+                addResult(`6. initData exists: ${!!tg.initData}`);
+                addResult(`7. initData length: ${tg.initData ? tg.initData.length : 0} chars`);
+
+                // Check initDataUnsafe
+                addResult(`8. initDataUnsafe exists: ${!!tg.initDataUnsafe}`);
+
+                if (tg.initDataUnsafe) {
+                    const keys = Object.keys(tg.initDataUnsafe);
+                    addResult(`9. initDataUnsafe keys: ${keys.join(', ')}`);
+
+                    if (tg.initDataUnsafe.user) {
+                        const user = tg.initDataUnsafe.user;
+                        addResult(`10. ✅ USER FOUND!`);
+                        addResult(`    - ID: ${user.id}`);
+                        addResult(`    - First name: ${user.first_name || 'Not set'}`);
+                        addResult(`    - Last name: ${user.last_name || 'Not set'}`);
+                        addResult(`    - Username: ${user.username || 'Not set'}`);
+                        addResult(`    - Language: ${user.language_code || 'Not set'}`);
+                        addResult(`    - Phone: ${user.phone_number || 'Not provided'}`);
+                    } else {
+                        addResult(`10. ❌ NO USER in initDataUnsafe`, true);
+                    }
+                } else {
+                    addResult(`9. ❌ initDataUnsafe is null/undefined`, true);
+                }
+
+                // Raw data dump
+                addResult(`<br><strong>RAW DATA DUMP:</strong>`);
+                addResult(`initDataUnsafe: ${JSON.stringify(tg.initDataUnsafe, null, 2)}`);
+
+            } else {
+                addResult(`2. ❌ window.Telegram.WebApp does not exist`, true);
+            }
+        } else {
+            addResult(`1. ❌ window.Telegram does not exist`, true);
+        }
+
+        // Environment info
+        addResult(`<br><strong>ENVIRONMENT:</strong>`);
+        addResult(`User Agent: ${navigator.userAgent}`);
+        addResult(`URL: ${window.location.href}`);
+        addResult(`Referrer: ${document.referrer || 'None'}`);
+
+        // Check if opened through Telegram
+        const isTelegramApp = navigator.userAgent.includes('Telegram');
+        const hasWebAppData = window.location.href.includes('tgWebAppData');
+        const telegramReferrer = document.referrer.includes('telegram');
+
+        addResult(`<br><strong>TELEGRAM DETECTION:</strong>`);
+        addResult(`Is Telegram App: ${isTelegramApp}`);
+        addResult(`Has WebApp Data in URL: ${hasWebAppData}`);
+        addResult(`Telegram Referrer: ${telegramReferrer}`);
+    </script>
+</body>
+
+</html>

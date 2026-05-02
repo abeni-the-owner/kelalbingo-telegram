@@ -2,17 +2,28 @@ const bot = require('../config/telegram');
 const pool = require('../config/database');
 
 // Set menu button for the bot (this passes user data)
-bot.setChatMenuButton({
-  menu_button: {
-    type: 'web_app',
-    text: '🎲 Play Bingo',
-    web_app: {
-      url: process.env.WEB_APP_URL || 'https://kelalbingo-telegram.onrender.com'
+async function setupMenuButton() {
+    try {
+        const webAppUrl = process.env.WEB_APP_URL || 'https://kelalbingo-telegram.onrender.com';
+        
+        await bot.setChatMenuButton({
+            menu_button: {
+                type: 'web_app',
+                text: '🎲 Play Bingo',
+                web_app: {
+                    url: webAppUrl
+                }
+            }
+        });
+        
+        console.log('✅ Menu button set successfully:', webAppUrl);
+    } catch (err) {
+        console.error('❌ Error setting menu button:', err.message);
     }
-  }
-}).catch(err => {
-  console.error('Error setting menu button:', err);
-});
+}
+
+// Setup menu button on startup
+setupMenuButton();
 
 // Start command
 bot.onText(/\/start/, async (msg) => {
@@ -170,6 +181,25 @@ bot.on('contact', async (msg) => {
     }
   } else {
     bot.sendMessage(chatId, '❌ Please share your own contact information');
+  }
+});
+
+// Menu button test command
+bot.onText(/\/menu/, async (msg) => {
+  const chatId = msg.chat.id;
+  
+  try {
+    const menuButton = await bot.getChatMenuButton({ chat_id: chatId });
+    bot.sendMessage(chatId, 
+      `🔍 *Menu Button Status:*\n\n` +
+      `Type: ${menuButton.type}\n` +
+      `Text: ${menuButton.text || 'Not set'}\n` +
+      `URL: ${menuButton.web_app?.url || 'Not set'}\n\n` +
+      `Look for the 🎲 button at the bottom of the chat!`,
+      { parse_mode: 'Markdown' }
+    );
+  } catch (error) {
+    bot.sendMessage(chatId, `❌ Error checking menu button: ${error.message}`);
   }
 });
 
