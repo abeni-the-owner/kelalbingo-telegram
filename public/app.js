@@ -840,10 +840,128 @@ function removeCard(cardId) {
     }
 }
 
+// Display cards in the grid
+function displayCards(cards) {
+    const container = document.getElementById('cards-grid');
+    if (!container) {
+        debugLog('❌ Cards grid container not found');
+        return;
+    }
+
+    if (!cards || cards.length === 0) {
+        container.innerHTML = '<p class="loading">No cards available</p>';
+        return;
+    }
+
+    const myUserId = (currentUser && currentUser.telegram_id) || (tg && tg.initDataUnsafe && tg.initDataUnsafe.user && tg.initDataUnsafe.user.id) || 1;
+
+    container.innerHTML = cards.map(card => {
+        const isTaken = takenCards[card.id];
+        const isTakenByMe = isTaken === myUserId;
+        const isAvailable = !isTaken || isTakenByMe;
+
+        return `
+            <div class="card-item ${isTakenByMe ? 'selected' : ''} ${isTaken && !isTakenByMe ? 'taken' : ''}" 
+                 onclick="toggleCardSelection(${card.id}, ${card.card_number})"
+                 data-card-id="${card.id}">
+                <div class="card-number">#${card.card_number}</div>
+                <div class="card-status">
+                    ${isTakenByMe ? '✓ Selected' : isTaken ? '👤 Taken' : '📋 Available'}
+                </div>
+                <div class="card-preview">
+                    ${generateCardPreview(card)}
+                </div>
+            </div>
+        `;
+    }).join('');
+
+    debugLog(`✅ Displayed ${cards.length} cards`);
+}
+
+// Generate card preview (simplified version)
+function generateCardPreview(card) {
+    let html = '<div class="mini-card">';
+    for (let row = 0; row < 3; row++) { // Show only first 3 rows as preview
+        html += '<div class="mini-row">';
+        html += `<div class="mini-cell">${card.b_column[row]}</div>`;
+        html += `<div class="mini-cell">${card.i_column[row]}</div>`;
+        html += `<div class="mini-cell ${card.n_column[row] === 0 ? 'free' : ''}">${card.n_column[row] === 0 ? '⭐' : card.n_column[row]}</div>`;
+        html += `<div class="mini-cell">${card.g_column[row]}</div>`;
+        html += `<div class="mini-cell">${card.o_column[row]}</div>`;
+        html += '</div>';
+    }
+    html += '</div>';
+    return html;
+}
+
+// Toggle card selection
+function toggleCardSelection(cardId, cardNumber) {
+    const myUserId = (currentUser && currentUser.telegram_id) || (tg && tg.initDataUnsafe && tg.initDataUnsafe.user && tg.initDataUnsafe.user.id) || 1;
+
+    // Check if card is taken by someone else
+    if (takenCards[cardId] && takenCards[cardId] !== myUserId) {
+        const alertMsg = `Card #${cardNumber} is already selected by another player`;
+
+        if (tg && tg.showAlert && typeof tg.showAlert === 'function') {
+            try {
+                tg.showAlert(alertMsg);
+            } catch (e) {
+                alert(alertMsg);
+            }
+        } else {
+            alert(alertMsg);
+        }
+        return;
+    }
+
+    const cardIndex = selectedCards.findIndex(c => c.id === cardId);
+
+    if (cardIndex > -1) {
+        // Deselect this card
+        selectedCards.splice(cardIndex, 1);
+        delete takenCards[cardId];
+
+        // Emit to server if socket is ready
+        if (socketReady && socket) {
+            socket.emit('deselect-card', {
+                roundNumber: currentRound,
+                cardId: cardId,
+                cardNumber: cardNumber,
+                userId: myUserId
+            });
+        }
+
+        debugLog(`➖ Deselected card #${cardNumber}`);
+    } else {
+        // Select card
+        selectedCards.push({ id: cardId, number: cardNumber });
+        takenCards[cardId] = myUserId;
+
+        // Emit to server if socket is ready
+        if (socketReady && socket) {
+            socket.emit('select-card', {
+                roundNumber: currentRound,
+                cardId: cardId,
+                cardNumber: cardNumber,
+                userId: myUserId
+            });
+        }
+
+        debugLog(`➕ Selected card #${cardNumber}`);
+    }
+
+    // Update displays
+    displayCards(allCards);
+    updateSelectedCards();
+    updateStartButton();
+}
+
 // Update start button
 function updateStartButton() {
     const btn = document.getElementById('start-game-btn');
-    btn.disabled = selectedCards.length === 0;
+    if (btn) {
+        btn.disabled = selectedCards.length === 0;
+    }
 }
 
 // Load history
