@@ -27,13 +27,16 @@ setupMenuButton();
 
 // Start command
 bot.onText(/\/start/, async (msg) => {
+  console.log('📨 Received /start command from user:', msg.from.id);
+  
   const chatId = msg.chat.id;
   const userId = msg.from.id;
   const username = msg.from.username || msg.from.first_name;
 
-  const webAppUrl = process.env.WEB_APP_URL || 'https://kelalbingo-telegram.onrender.com';
+  try {
+    const webAppUrl = process.env.WEB_APP_URL || 'https://kelalbingo-telegram.onrender.com';
 
-  const welcomeMessage = `
+    const welcomeMessage = `
 🎮 *Welcome to KELALBINGO!*
 
 Hello ${username}! 👋
@@ -50,34 +53,47 @@ Play bingo, win prizes, and have fun!
 2. OR click the button below
 
 *Note: Use the menu button for full features!*
-  `;
+    `;
 
-  const keyboard = {
-    inline_keyboard: [
-      [
-        {
-          text: '🎲 Play Bingo (Inline)',
-          web_app: { url: webAppUrl }
-        }
-      ],
-      [
-        { text: '💰 Check Balance', callback_data: 'check_balance' },
-        { text: '📊 My Stats', callback_data: 'my_stats' }
-      ],
-      [
-        { text: '📱 Share Contact', request_contact: true }
-      ],
-      [
-        { text: '🔍 Diagnostics', url: webAppUrl + '/diagnose.html' },
-        { text: '❓ Help', callback_data: 'help' }
+    const keyboard = {
+      inline_keyboard: [
+        [
+          {
+            text: '🎲 Play Bingo (Inline)',
+            web_app: { url: webAppUrl }
+          }
+        ],
+        [
+          { text: '💰 Check Balance', callback_data: 'check_balance' },
+          { text: '📊 My Stats', callback_data: 'my_stats' }
+        ],
+        [
+          { text: '📱 Share Contact', request_contact: true }
+        ],
+        [
+          { text: '🔍 Diagnostics', url: webAppUrl + '/diagnose.html' },
+          { text: '❓ Help', callback_data: 'help' }
+        ]
       ]
-    ]
-  };
+    };
 
-  bot.sendMessage(chatId, welcomeMessage, {
-    parse_mode: 'Markdown',
-    reply_markup: keyboard
-  });
+    await bot.sendMessage(chatId, welcomeMessage, {
+      parse_mode: 'Markdown',
+      reply_markup: keyboard
+    });
+    
+    console.log('✅ Start message sent successfully to user:', userId);
+    
+  } catch (error) {
+    console.error('❌ Error in /start command:', error);
+    
+    // Send a simple fallback message
+    try {
+      await bot.sendMessage(chatId, '🎮 Welcome to KELALBINGO!\n\nSorry, there was an error. Please try again.');
+    } catch (fallbackError) {
+      console.error('❌ Fallback message also failed:', fallbackError);
+    }
+  }
 });
 
 // Callback query handler
@@ -181,6 +197,19 @@ bot.on('contact', async (msg) => {
     }
   } else {
     bot.sendMessage(chatId, '❌ Please share your own contact information');
+  }
+});
+
+// Simple test command
+bot.onText(/\/test/, async (msg) => {
+  console.log('📨 Received /test command from user:', msg.from.id);
+  const chatId = msg.chat.id;
+  
+  try {
+    await bot.sendMessage(chatId, '✅ Bot is working! Server time: ' + new Date().toISOString());
+    console.log('✅ Test message sent successfully');
+  } catch (error) {
+    console.error('❌ Error in /test command:', error);
   }
 });
 
