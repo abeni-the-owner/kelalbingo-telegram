@@ -199,7 +199,7 @@ debugLog('🎮 KELALBINGO Starting...');
 
 // Force show game screen immediately
 function forceShowInterface() {
-    debugLog('📺 Showing screen: game-screen');
+    debugLog('📺 Showing interface: game-page');
     try {
         // Hide loading screen
         const loading = document.getElementById('loading');
@@ -208,15 +208,19 @@ function forceShowInterface() {
             loading.classList.remove('active');
         }
 
-        // Show game screen
-        const gameScreen = document.getElementById('game-screen');
-        if (gameScreen) {
-            gameScreen.style.display = 'block';
-            gameScreen.classList.add('active');
-            debugLog('✅ Showing: game-screen');
+        // Show game page
+        const gamePage = document.getElementById('game-page');
+        if (gamePage) {
+            gamePage.style.display = 'block';
+            gamePage.classList.add('active');
+            debugLog('✅ Showing: game-page');
         } else {
-            debugLog('❌ Game screen not found');
+            debugLog('❌ Game page not found');
         }
+
+        // Initialize navigation
+        initializeNavigation();
+
     } catch (e) {
         debugLog('❌ Error showing interface: ' + e.message);
     }
@@ -933,17 +937,289 @@ function showScreen(screenId) {
     }
 }
 
-// Tab switching
-document.querySelectorAll('.tab').forEach(tab => {
-    tab.addEventListener('click', () => {
-        const tabName = tab.dataset.tab;
-
-        document.querySelectorAll('.tab').forEach(t => t.classList.remove('active'));
-        document.querySelectorAll('.tab-content').forEach(c => c.classList.remove('active'));
-
-        tab.classList.add('active');
-        document.getElementById(`${tabName}-tab`).classList.add('active');
+// Page Navigation System
+function initializeNavigation() {
+    document.querySelectorAll('.nav-tab').forEach(tab => {
+        tab.addEventListener('click', () => {
+            const pageName = tab.dataset.page;
+            switchPage(pageName);
+        });
     });
+}
+
+function switchPage(pageName) {
+    // Update navigation tabs
+    document.querySelectorAll('.nav-tab').forEach(t => t.classList.remove('active'));
+    document.querySelector(`[data-page="${pageName}"]`).classList.add('active');
+
+    // Update pages
+    document.querySelectorAll('.page').forEach(p => p.classList.remove('active'));
+    document.getElementById(`${pageName}-page`).classList.add('active');
+
+    // Load page-specific data
+    loadPageData(pageName);
+
+    debugLog(`📄 Switched to ${pageName} page`);
+}
+
+function loadPageData(pageName) {
+    switch (pageName) {
+        case 'account':
+            loadAccountData();
+            break;
+        case 'referral':
+            loadReferralData();
+            break;
+        case 'game':
+            // Game data is already loaded in init()
+            break;
+    }
+}
+
+// Account Page Functions
+async function loadAccountData() {
+    try {
+        debugLog('📊 Loading account data...');
+
+        // Load user statistics
+        const statsResponse = await fetch(`${API_URL}/game/stats`, {
+            headers: {
+                'X-Telegram-User-Id': (tg && tg.initDataUnsafe && tg.initDataUnsafe.user && tg.initDataUnsafe.user.id) || (currentUser && currentUser.telegram_id) || 1
+            }
+        });
+
+        if (statsResponse.ok) {
+            const statsData = await statsResponse.json();
+            updateAccountStats(statsData.stats);
+        }
+
+        // Load game history
+        const historyResponse = await fetch(`${API_URL}/game/history`, {
+            headers: {
+                'X-Telegram-User-Id': (tg && tg.initDataUnsafe && tg.initDataUnsafe.user && tg.initDataUnsafe.user.id) || (currentUser && currentUser.telegram_id) || 1
+            }
+        });
+
+        if (historyResponse.ok) {
+            const historyData = await historyResponse.json();
+            updateAccountHistory(historyData.history);
+        }
+
+        // Update profile information
+        updateProfileInfo();
+
+    } catch (error) {
+        debugLog('❌ Error loading account data: ' + error.message);
+    }
+}
+
+function updateAccountStats(stats) {
+    const elements = {
+        'total-games': stats.total_games || 0,
+        'total-bet': (stats.total_bet || 0) + ' Birr',
+        'total-payout': (stats.total_payout || 0) + ' Birr',
+        'total-profit': (stats.total_profit || 0) + ' Birr',
+        'account-balance': (stats.balance || 0) + ' Birr',
+        'account-profit': (stats.total_profit || 0) + ' Birr'
+    };
+
+    Object.keys(elements).forEach(id => {
+        const element = document.getElementById(id);
+        if (element) {
+            element.textContent = elements[id];
+        }
+    });
+}
+
+function updateProfileInfo() {
+    if (currentUser) {
+        const profileName = document.getElementById('profile-name');
+        const profileUsername = document.getElementById('profile-username');
+        const profileAvatar = document.getElementById('profile-avatar-text');
+
+        if (profileName) {
+            profileName.textContent = currentUser.first_name || 'User';
+        }
+
+        if (profileUsername) {
+            profileUsername.textContent = currentUser.username ? '@' + currentUser.username : '@user';
+        }
+
+        if (profileAvatar) {
+            profileAvatar.textContent = (currentUser.first_name || 'User').charAt(0).toUpperCase();
+        }
+    }
+}
+
+function updateAccountHistory(history) {
+    const historyList = document.getElementById('account-history-list');
+    if (!historyList) return;
+
+    if (history.length === 0) {
+        historyList.innerHTML = '<p class="empty-state">No games played yet</p>';
+        return;
+    }
+
+    historyList.innerHTML = history.slice(0, 10).map(game => `
+        <div class="history-item">
+            <div class="round">Round ${game.round_number}</div>
+            <div>Cards: ${game.cards_count} | Bet: ${game.bet_amount} Birr</div>
+            <div class="${game.profit >= 0 ? 'profit' : 'loss'}">
+                ${game.profit >= 0 ? '+' : ''}${game.profit} Birr
+            </div>
+        </div>
+    `).join('');
+}
+
+// Referral Page Functions
+async function loadReferralData() {
+    try {
+        debugLog('🎁 Loading referral data...');
+
+        if (!currentUser) {
+            debugLog('⚠️ No user data available for referral');
+            return;
+        }
+
+        // Load referral data from server
+        const response = await fetch(`${API_URL}/referral/my-referral`, {
+            headers: {
+                'X-Telegram-User-Id': currentUser.telegram_id
+            }
+        });
+
+        if (response.ok) {
+            const data = await response.json();
+            debugLog('✅ Referral data loaded: ' + JSON.stringify(data));
+
+            updateReferralCode(data.referral_code, data.referral_link);
+            updateReferralStats(data.stats);
+            updateReferralList(data.referrals);
+        } else {
+            throw new Error('Failed to load referral data');
+        }
+
+    } catch (error) {
+        debugLog('❌ Error loading referral data: ' + error.message);
+
+        // Fallback to generated code if API fails
+        if (currentUser) {
+            const referralCode = generateReferralCode(currentUser.telegram_id);
+            const referralLink = `https://t.me/kelalbingo_bot?start=${referralCode}`;
+
+            updateReferralCode(referralCode, referralLink);
+            updateReferralStats({
+                total_referrals: 0,
+                referral_bonus: 0,
+                active_referrals: 0
+            });
+            updateReferralList([]);
+        }
+    }
+}
+
+function generateReferralCode(userId) {
+    // Generate a simple referral code based on user ID
+    return 'REF' + userId.toString().padStart(6, '0');
+}
+
+function updateReferralCode(code, link) {
+    const codeElement = document.getElementById('referral-code');
+    const linkElement = document.getElementById('referral-link');
+
+    if (codeElement) {
+        codeElement.textContent = code;
+    }
+
+    if (linkElement) {
+        linkElement.textContent = link;
+    }
+
+    // Add copy functionality
+    setupCopyButtons();
+}
+
+function updateReferralStats(stats) {
+    const elements = {
+        'total-referrals': stats.total_referrals,
+        'referral-bonus': stats.referral_bonus + ' Birr',
+        'active-referrals': stats.active_referrals
+    };
+
+    Object.keys(elements).forEach(id => {
+        const element = document.getElementById(id);
+        if (element) {
+            element.textContent = elements[id];
+        }
+    });
+}
+
+function updateReferralList(referrals) {
+    const listContent = document.getElementById('referral-list-content');
+    if (!listContent) return;
+
+    if (referrals.length === 0) {
+        listContent.innerHTML = '<p class="empty-state">No referrals yet. Start inviting friends!</p>';
+        return;
+    }
+
+    listContent.innerHTML = referrals.map(referral => `
+        <div class="referral-item">
+            <div class="referral-name">${referral.name || 'Anonymous'}</div>
+            <div class="referral-date">${new Date(referral.joined_date).toLocaleDateString()}</div>
+            <div class="referral-status ${referral.active ? 'active' : 'inactive'}">
+                ${referral.active ? 'Active' : 'Inactive'}
+            </div>
+        </div>
+    `).join('');
+}
+
+function setupCopyButtons() {
+    const copyReferralBtn = document.getElementById('copy-referral-btn');
+    const copyLinkBtn = document.getElementById('copy-link-btn');
+
+    if (copyReferralBtn) {
+        copyReferralBtn.addEventListener('click', async() => {
+            const code = document.getElementById('referral-code').textContent;
+            await copyToClipboard(code);
+            showNotification('Referral code copied!');
+        });
+    }
+
+    if (copyLinkBtn) {
+        copyLinkBtn.addEventListener('click', async() => {
+            const link = document.getElementById('referral-link').textContent;
+            await copyToClipboard(link);
+            showNotification('Referral link copied!');
+        });
+    }
+}
+
+async function copyToClipboard(text) {
+    try {
+        await navigator.clipboard.writeText(text);
+    } catch (err) {
+        // Fallback for older browsers
+        const textArea = document.createElement('textarea');
+        textArea.value = text;
+        document.body.appendChild(textArea);
+        textArea.select();
+        document.execCommand('copy');
+        document.body.removeChild(textArea);
+    }
+}
+
+function showNotification(message) {
+    if (tg && tg.showAlert) {
+        tg.showAlert(message);
+    } else {
+        alert(message);
+    }
+}
+
+// Initialize navigation when DOM is ready
+document.addEventListener('DOMContentLoaded', () => {
+    initializeNavigation();
 });
 
 // Start game button

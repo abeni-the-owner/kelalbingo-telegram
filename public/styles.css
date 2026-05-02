@@ -25,7 +25,367 @@ body {
     display: block;
 }
 
+
+/* Main Navigation */
+
+.main-nav {
+    background: var(--tg-theme-secondary-bg-color, #f8f9fa);
+    border-bottom: 1px solid var(--tg-theme-hint-color, #e1e1e1);
+    position: sticky;
+    top: 0;
+    z-index: 100;
+}
+
+.nav-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 15px 20px;
+    border-bottom: 1px solid var(--tg-theme-hint-color, #e1e1e1);
+}
+
+.app-title {
+    font-size: 1.5rem;
+    font-weight: bold;
+    color: var(--tg-theme-text-color, #000000);
+    margin: 0;
+}
+
+.nav-tabs {
+    display: flex;
+    justify-content: space-around;
+    padding: 0;
+}
+
+.nav-tab {
+    flex: 1;
+    padding: 15px 10px;
+    border: none;
+    background: transparent;
+    color: var(--tg-theme-hint-color, #999999);
+    font-size: 0.9rem;
+    font-weight: 500;
+    cursor: pointer;
+    transition: all 0.3s ease;
+    border-bottom: 3px solid transparent;
+}
+
+.nav-tab.active {
+    color: var(--tg-theme-button-color, #3390ec);
+    border-bottom-color: var(--tg-theme-button-color, #3390ec);
+    background: var(--tg-theme-button-color, #3390ec);
+    background: color-mix(in srgb, var(--tg-theme-button-color, #3390ec) 10%, transparent);
+}
+
+.nav-tab:hover {
+    background: var(--tg-theme-button-color, #3390ec);
+    background: color-mix(in srgb, var(--tg-theme-button-color, #3390ec) 5%, transparent);
+}
+
+
+/* Page System */
+
+.page {
+    display: none;
+    padding: 20px;
+    min-height: calc(100vh - 120px);
+}
+
+.page.active {
+    display: block;
+}
+
+
+/* Game Page Styles */
+
+.game-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 20px;
+    padding: 15px;
+    background: var(--tg-theme-secondary-bg-color, #f8f9fa);
+    border-radius: 12px;
+}
+
+.game-controls {
+    margin-top: 20px;
+    padding: 15px;
+    background: var(--tg-theme-secondary-bg-color, #f8f9fa);
+    border-radius: 12px;
+}
+
+
+/* Account Page Styles */
+
+.account-header {
+    margin-bottom: 25px;
+}
+
+.profile-section {
+    display: flex;
+    align-items: center;
+    gap: 15px;
+    padding: 20px;
+    background: var(--tg-theme-secondary-bg-color, #f8f9fa);
+    border-radius: 15px;
+}
+
+.profile-avatar {
+    width: 60px;
+    height: 60px;
+    border-radius: 50%;
+    background: var(--tg-theme-button-color, #3390ec);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 1.5rem;
+}
+
+.profile-avatar-text {
+    color: white;
+}
+
+.profile-info h2 {
+    margin: 0 0 5px 0;
+    color: var(--tg-theme-text-color, #000000);
+    font-size: 1.2rem;
+}
+
+.profile-info p {
+    margin: 0;
+    color: var(--tg-theme-hint-color, #999999);
+    font-size: 0.9rem;
+}
+
+.account-stats {
+    margin-bottom: 25px;
+}
+
+.stats-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(140px, 1fr));
+    gap: 15px;
+    margin-top: 15px;
+}
+
+.stat-card {
+    background: var(--tg-theme-secondary-bg-color, #f8f9fa);
+    border-radius: 12px;
+    padding: 15px;
+    display: flex;
+    align-items: center;
+    gap: 12px;
+}
+
+.stat-icon {
+    font-size: 1.5rem;
+    width: 40px;
+    height: 40px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    background: var(--tg-theme-button-color, #3390ec);
+    background: color-mix(in srgb, var(--tg-theme-button-color, #3390ec) 20%, transparent);
+    border-radius: 8px;
+}
+
+.stat-content {
+    flex: 1;
+}
+
+.stat-value {
+    font-size: 1.2rem;
+    font-weight: bold;
+    color: var(--tg-theme-text-color, #000000);
+}
+
+.stat-label {
+    font-size: 0.8rem;
+    color: var(--tg-theme-hint-color, #999999);
+    margin-top: 2px;
+}
+
+.account-balance {
+    margin-bottom: 25px;
+}
+
+.balance-card {
+    background: var(--tg-theme-secondary-bg-color, #f8f9fa);
+    border-radius: 12px;
+    padding: 20px;
+    margin-top: 15px;
+}
+
+.balance-row {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 10px 0;
+    border-bottom: 1px solid var(--tg-theme-hint-color, #e1e1e1);
+}
+
+.balance-row:last-child {
+    border-bottom: none;
+}
+
+.balance-amount {
+    font-weight: bold;
+    color: var(--tg-theme-text-color, #000000);
+}
+
+.profit-amount {
+    font-weight: bold;
+    color: #4caf50;
+}
+
+.account-history {
+    margin-bottom: 25px;
+}
+
+
+/* Referral Page Styles */
+
+.referral-header {
+    text-align: center;
+    margin-bottom: 25px;
+}
+
+.referral-header h2 {
+    margin-bottom: 10px;
+    color: var(--tg-theme-text-color, #000000);
+}
+
+.referral-header p {
+    color: var(--tg-theme-hint-color, #999999);
+}
+
+.referral-code-section,
+.referral-link-section {
+    margin-bottom: 25px;
+}
+
+.referral-code-box,
+.referral-link-box {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    background: var(--tg-theme-secondary-bg-color, #f8f9fa);
+    border-radius: 12px;
+    padding: 15px;
+    margin-top: 10px;
+}
+
+.referral-code-box span,
+.referral-link-box span {
+    flex: 1;
+    font-family: monospace;
+    font-weight: bold;
+    color: var(--tg-theme-text-color, #000000);
+    word-break: break-all;
+}
+
+.referral-note {
+    font-size: 0.8rem;
+    color: var(--tg-theme-hint-color, #999999);
+    margin-top: 8px;
+}
+
+.referral-stats {
+    margin-bottom: 25px;
+}
+
+.referral-stats-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(100px, 1fr));
+    gap: 15px;
+    margin-top: 15px;
+}
+
+.referral-stat {
+    background: var(--tg-theme-secondary-bg-color, #f8f9fa);
+    border-radius: 12px;
+    padding: 15px;
+    text-align: center;
+}
+
+.referral-stat .stat-value {
+    font-size: 1.5rem;
+    font-weight: bold;
+    color: var(--tg-theme-text-color, #000000);
+    margin-bottom: 5px;
+}
+
+.referral-stat .stat-label {
+    font-size: 0.8rem;
+    color: var(--tg-theme-hint-color, #999999);
+}
+
+.referral-list {
+    margin-bottom: 25px;
+}
+
+.referral-list-content {
+    background: var(--tg-theme-secondary-bg-color, #f8f9fa);
+    border-radius: 12px;
+    padding: 15px;
+    margin-top: 15px;
+    max-height: 200px;
+    overflow-y: auto;
+}
+
+.referral-info {
+    margin-bottom: 25px;
+}
+
+.info-list {
+    margin-top: 15px;
+}
+
+.info-item {
+    display: flex;
+    align-items: center;
+    gap: 15px;
+    padding: 12px;
+    background: var(--tg-theme-secondary-bg-color, #f8f9fa);
+    border-radius: 8px;
+    margin-bottom: 10px;
+}
+
+.info-icon {
+    font-size: 1.2rem;
+    width: 30px;
+    height: 30px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    background: var(--tg-theme-button-color, #3390ec);
+    background: color-mix(in srgb, var(--tg-theme-button-color, #3390ec) 20%, transparent);
+    border-radius: 50%;
+}
+
+
+/* Responsive Design */
+
+@media (max-width: 480px) {
+    .stats-grid {
+        grid-template-columns: repeat(2, 1fr);
+    }
+    .referral-stats-grid {
+        grid-template-columns: repeat(3, 1fr);
+    }
+    .nav-tab {
+        font-size: 0.8rem;
+        padding: 12px 8px;
+    }
+    .app-title {
+        font-size: 1.2rem;
+    }
+}
+
+
 /* Loading Screen */
+
 #loading {
     display: flex;
     flex-direction: column;
@@ -34,12 +394,16 @@ body {
     min-height: 100vh;
 }
 
+
 /* Force hide loading after 2 seconds */
+
 #loading.force-hide {
     display: none !important;
 }
 
+
 /* Force show game screen */
+
 #game-screen.force-show {
     display: block !important;
 }
@@ -54,11 +418,17 @@ body {
 }
 
 @keyframes spin {
-    0% { transform: rotate(0deg); }
-    100% { transform: rotate(360deg); }
+    0% {
+        transform: rotate(0deg);
+    }
+    100% {
+        transform: rotate(360deg);
+    }
 }
 
+
 /* Login Screen */
+
 #login-screen {
     text-align: center;
     padding-top: 100px;
@@ -69,7 +439,9 @@ body {
     margin-bottom: 20px;
 }
 
+
 /* Card Selection Section (Top) */
+
 .card-selection-section {
     background: var(--tg-theme-bg-color, #ffffff);
     padding: 15px;
@@ -85,7 +457,9 @@ body {
     text-align: center;
 }
 
+
 /* Compact Cards Grid */
+
 .cards-grid-compact {
     display: grid;
     grid-template-columns: repeat(auto-fill, minmax(50px, 1fr));
@@ -133,7 +507,9 @@ body {
     transform: scale(0.95);
 }
 
+
 /* Header */
+
 .header {
     background: var(--tg-theme-secondary-bg-color, #f0f0f0);
     padding: 12px;
@@ -153,7 +529,8 @@ body {
     gap: 10px;
 }
 
-.balance, .profit {
+.balance,
+.profit {
     flex: 1;
     text-align: center;
     padding: 10px;
@@ -172,7 +549,9 @@ body {
     color: var(--tg-theme-button-color, #3390ec);
 }
 
+
 /* Round Info */
+
 .round-info {
     text-align: center;
     padding: 15px;
@@ -182,7 +561,9 @@ body {
     margin-bottom: 20px;
 }
 
+
 /* Tabs */
+
 .tabs {
     display: flex;
     gap: 10px;
@@ -207,7 +588,9 @@ body {
     color: var(--tg-theme-button-text-color, #ffffff);
 }
 
+
 /* Tab Content */
+
 .tab-content {
     display: none;
 }
@@ -216,7 +599,9 @@ body {
     display: block;
 }
 
+
 /* Buttons */
+
 .btn {
     width: 100%;
     padding: 15px;
@@ -238,7 +623,9 @@ body {
     cursor: not-allowed;
 }
 
+
 /* Cards Grid */
+
 .cards-grid {
     display: grid;
     grid-template-columns: repeat(auto-fill, minmax(150px, 1fr));
@@ -258,7 +645,7 @@ body {
 
 .card-item:hover {
     transform: translateY(-2px);
-    box-shadow: 0 4px 8px rgba(0,0,0,0.1);
+    box-shadow: 0 4px 8px rgba(0, 0, 0, 0.1);
 }
 
 .card-item.selected {
@@ -267,7 +654,9 @@ body {
     color: white;
 }
 
+
 /* History List */
+
 .history-list {
     margin-top: 15px;
 }
@@ -292,7 +681,9 @@ body {
     color: #f44336;
 }
 
+
 /* Stats Box */
+
 .stats-box {
     background: var(--tg-theme-secondary-bg-color, #f0f0f0);
     padding: 15px;
@@ -304,21 +695,26 @@ body {
     display: flex;
     justify-content: space-between;
     padding: 8px 0;
-    border-bottom: 1px solid rgba(0,0,0,0.1);
+    border-bottom: 1px solid rgba(0, 0, 0, 0.1);
 }
 
 .stat-row:last-child {
     border-bottom: none;
 }
 
+
 /* Empty States */
-.empty-state, .loading {
+
+.empty-state,
+.loading {
     text-align: center;
     padding: 40px 20px;
     color: var(--tg-theme-hint-color, #999);
 }
 
+
 /* Selected Cards */
+
 .selected-cards {
     min-height: 100px;
     margin-bottom: 20px;
@@ -343,14 +739,18 @@ body {
     cursor: pointer;
 }
 
+
 /* Card Preview */
+
 .card-preview {
     font-size: 12px;
     color: var(--tg-theme-hint-color, #999);
     margin-top: 5px;
 }
 
+
 /* Modal */
+
 .modal {
     position: fixed;
     top: 0;
@@ -399,7 +799,9 @@ body {
     line-height: 1;
 }
 
+
 /* Bingo Card */
+
 .bingo-card {
     background: white;
     border: 3px solid var(--tg-theme-button-color, #3390ec);

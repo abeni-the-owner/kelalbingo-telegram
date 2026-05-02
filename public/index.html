@@ -9,6 +9,7 @@
     <script>
         // Fallback for Socket.IO if CDN fails
         window.socketIOLoaded = false;
+
         function loadSocketIO() {
             const script = document.createElement('script');
             script.src = 'https://cdn.socket.io/4.6.1/socket.io.min.js';
@@ -30,21 +31,25 @@
 
 <body>
     <div id="app">
-        <!-- Main Game Screen - Shows immediately -->
-        <div id="game-screen" class="screen active">
-            <!-- Card Selection Section (Top) -->
-            <div class="card-selection-section">
-                <h3 class="section-title">🃏 Select Your Cards</h3>
-                <div id="cards-grid" class="cards-grid-compact">
-                    <p class="loading">Loading cards...</p>
-                </div>
-            </div>
-
-            <!-- User Info & Balance -->
-            <div class="header">
+        <!-- Main Navigation -->
+        <div class="main-nav">
+            <div class="nav-header">
+                <h1 class="app-title">🎮 KELALBINGO</h1>
                 <div class="user-info">
                     <span id="username">Loading...</span>
                 </div>
+            </div>
+            <div class="nav-tabs">
+                <button class="nav-tab active" data-page="game">🎲 Game</button>
+                <button class="nav-tab" data-page="account">👤 Account</button>
+                <button class="nav-tab" data-page="referral">🎁 Referral</button>
+            </div>
+        </div>
+
+        <!-- Game Page -->
+        <div id="game-page" class="page active">
+            <!-- Balance & Round Info -->
+            <div class="game-header">
                 <div class="balance-info">
                     <div class="balance">
                         <span class="label">Balance:</span>
@@ -55,44 +60,172 @@
                         <span id="profit" class="value">0</span> Birr
                     </div>
                 </div>
-            </div>
-
-            <!-- Round Info -->
-            <div class="round-info">
-                <h2>ROUND <span id="round-number">1</span></h2>
-            </div>
-
-            <!-- Debug Log -->
-            <div id="debug-log"
-                style="background: #222; color: #0f0; padding: 10px; border-radius: 5px; font-size: 12px; margin: 10px 0; max-height: 100px; overflow-y: auto;">
-            </div>
-
-            <!-- Navigation Tabs -->
-            <div class="tabs">
-                <button class="tab active" data-tab="play">🎲 Play</button>
-                <button class="tab" data-tab="history">📊 History</button>
-            </div>
-
-            <!-- Play Tab -->
-            <div id="play-tab" class="tab-content active">
-                <div class="play-container">
-                    <h3>Selected Cards</h3>
-                    <div id="selected-cards" class="selected-cards">
-                        <p class="empty-state">No cards selected</p>
-                    </div>
-                    <button id="start-game-btn" class="btn btn-primary" disabled>
-                        Start Game
-                    </button>
+                <div class="round-info">
+                    <h2>ROUND <span id="round-number">1</span></h2>
                 </div>
             </div>
 
-            <!-- History Tab -->
-            <div id="history-tab" class="tab-content">
-                <div class="history-container">
-                    <h3>Game History</h3>
-                    <div id="stats" class="stats-box"></div>
-                    <div id="history-list" class="history-list">
-                        <p class="loading">Loading history...</p>
+            <!-- Card Selection Section -->
+            <div class="card-selection-section">
+                <h3 class="section-title">🃏 Select Your Cards</h3>
+                <div id="cards-grid" class="cards-grid-compact">
+                    <p class="loading">Loading cards...</p>
+                </div>
+            </div>
+
+            <!-- Game Controls -->
+            <div class="game-controls">
+                <h3>Selected Cards</h3>
+                <div id="selected-cards" class="selected-cards">
+                    <p class="empty-state">No cards selected</p>
+                </div>
+                <button id="start-game-btn" class="btn btn-primary" disabled>
+                    Start Game
+                </button>
+            </div>
+
+            <!-- Debug Log -->
+            <div id="debug-log" style="background: #222; color: #0f0; padding: 10px; border-radius: 5px; font-size: 12px; margin: 10px 0; max-height: 100px; overflow-y: auto;">
+            </div>
+        </div>
+
+        <!-- Account Page -->
+        <div id="account-page" class="page">
+            <div class="account-header">
+                <div class="profile-section">
+                    <div class="profile-avatar">
+                        <span id="profile-avatar-text">👤</span>
+                    </div>
+                    <div class="profile-info">
+                        <h2 id="profile-name">Loading...</h2>
+                        <p id="profile-username">@username</p>
+                    </div>
+                </div>
+            </div>
+
+            <div class="account-stats">
+                <h3>📊 Your Statistics</h3>
+                <div class="stats-grid">
+                    <div class="stat-card">
+                        <div class="stat-icon">🎮</div>
+                        <div class="stat-content">
+                            <div class="stat-value" id="total-games">0</div>
+                            <div class="stat-label">Total Games</div>
+                        </div>
+                    </div>
+                    <div class="stat-card">
+                        <div class="stat-icon">💰</div>
+                        <div class="stat-content">
+                            <div class="stat-value" id="total-bet">0</div>
+                            <div class="stat-label">Total Bet</div>
+                        </div>
+                    </div>
+                    <div class="stat-card">
+                        <div class="stat-icon">🏆</div>
+                        <div class="stat-content">
+                            <div class="stat-value" id="total-payout">0</div>
+                            <div class="stat-label">Total Payout</div>
+                        </div>
+                    </div>
+                    <div class="stat-card">
+                        <div class="stat-icon">📈</div>
+                        <div class="stat-content">
+                            <div class="stat-value" id="total-profit">0</div>
+                            <div class="stat-label">Net Profit</div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <div class="account-balance">
+                <h3>💳 Balance Information</h3>
+                <div class="balance-card">
+                    <div class="balance-row">
+                        <span>Current Balance:</span>
+                        <span id="account-balance" class="balance-amount">0 Birr</span>
+                    </div>
+                    <div class="balance-row">
+                        <span>Total Profit:</span>
+                        <span id="account-profit" class="profit-amount">0 Birr</span>
+                    </div>
+                </div>
+            </div>
+
+            <div class="account-history">
+                <h3>📜 Recent Games</h3>
+                <div id="account-history-list" class="history-list">
+                    <p class="loading">Loading game history...</p>
+                </div>
+            </div>
+        </div>
+
+        <!-- Referral Page -->
+        <div id="referral-page" class="page">
+            <div class="referral-header">
+                <h2>🎁 Invite & Earn</h2>
+                <p>Invite friends and earn bonuses when they play!</p>
+            </div>
+
+            <div class="referral-code-section">
+                <h3>Your Referral Code</h3>
+                <div class="referral-code-box">
+                    <span id="referral-code">LOADING...</span>
+                    <button id="copy-referral-btn" class="btn btn-secondary">📋 Copy</button>
+                </div>
+                <p class="referral-note">Share this code with friends to earn bonuses!</p>
+            </div>
+
+            <div class="referral-link-section">
+                <h3>Referral Link</h3>
+                <div class="referral-link-box">
+                    <span id="referral-link">https://t.me/your_bot?start=REF_CODE</span>
+                    <button id="copy-link-btn" class="btn btn-secondary">📋 Copy</button>
+                </div>
+            </div>
+
+            <div class="referral-stats">
+                <h3>📊 Your Referrals</h3>
+                <div class="referral-stats-grid">
+                    <div class="referral-stat">
+                        <div class="stat-value" id="total-referrals">0</div>
+                        <div class="stat-label">Total Referrals</div>
+                    </div>
+                    <div class="referral-stat">
+                        <div class="stat-value" id="referral-bonus">0</div>
+                        <div class="stat-label">Bonus Earned</div>
+                    </div>
+                    <div class="referral-stat">
+                        <div class="stat-value" id="active-referrals">0</div>
+                        <div class="stat-label">Active Players</div>
+                    </div>
+                </div>
+            </div>
+
+            <div class="referral-list">
+                <h3>👥 Referral List</h3>
+                <div id="referral-list-content" class="referral-list-content">
+                    <p class="loading">Loading referrals...</p>
+                </div>
+            </div>
+
+            <div class="referral-info">
+                <h3>ℹ️ How It Works</h3>
+                <div class="info-list">
+                    <div class="info-item">
+                        <span class="info-icon">1️⃣</span>
+                        <span>Share your referral code or link with friends</span>
+                    </div>
+                    <div class="info-item">
+                        <span class="info-icon">2️⃣</span>
+                        <span>Friends join using your code</span>
+                    </div>
+                    <div class="info-item">
+                        <span class="info-icon">3️⃣</span>
+                        <span>Earn bonuses when they play games</span>
+                    </div>
+                    <div class="info-item">
+                        <span class="info-icon">4️⃣</span>
+                        <span>Track your earnings in real-time</span>
                     </div>
                 </div>
             </div>
