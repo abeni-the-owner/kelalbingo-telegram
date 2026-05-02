@@ -25,7 +25,8 @@ async function setupMenuButton() {
             { command: 'test', description: '🔧 Test bot connection' },
             { command: 'contact', description: '📱 Share your contact info' },
             { command: 'balance', description: '💰 Check your balance' },
-            { command: 'menu', description: '🔍 Check menu button status' }
+            { command: 'menu', description: '🔍 Check menu button status' },
+            { command: 'play', description: '🎲 Open bingo game directly' }
         ]);
         
         console.log('✅ Bot commands set successfully');
@@ -84,6 +85,7 @@ Play bingo, win prizes, and have fun!
         ],
         [
           { text: ' Diagnostics', url: webAppUrl + '/diagnose.html' },
+          { text: '🧪 User Test', url: webAppUrl + '/user-test.html' },
           { text: '❓ Help', callback_data: 'help' }
         ]
       ]
@@ -310,6 +312,69 @@ bot.onText(/\/balance/, async (msg) => {
   } catch (error) {
     console.error('Balance command error:', error);
     bot.sendMessage(chatId, '❌ Error fetching balance');
+  }
+});
+
+// Play command - direct web app access with user data
+bot.onText(/\/play/, async (msg) => {
+  console.log('📨 Received /play command from user:', msg.from.id);
+  
+  const chatId = msg.chat.id;
+  const userId = msg.from.id;
+  const username = msg.from.username || msg.from.first_name || 'User';
+
+  try {
+    const webAppUrl = process.env.WEB_APP_URL || 'https://kelalbingo-telegram.onrender.com';
+
+    const playMessage = `
+🎮 *Ready to Play KELALBINGO!*
+
+Hello ${username}! 👋
+
+📱 *User Info:*
+• ID: \`${userId}\`
+• Username: ${msg.from.username ? `@${msg.from.username}` : 'Not set'}
+• Name: ${msg.from.first_name} ${msg.from.last_name || ''}
+
+🎯 Click the button below to start playing:
+    `;
+
+    const keyboard = {
+      inline_keyboard: [
+        [
+          {
+            text: '🎲 Play KELALBINGO',
+            web_app: { 
+              url: webAppUrl + '?source=play_command&user_id=' + userId + 
+                   '&username=' + encodeURIComponent(msg.from.username || '') + 
+                   '&first_name=' + encodeURIComponent(msg.from.first_name || '') +
+                   '&last_name=' + encodeURIComponent(msg.from.last_name || '')
+            }
+          }
+        ],
+        [
+          { text: '💰 Check Balance', callback_data: 'check_balance' },
+          { text: '📊 My Stats', callback_data: 'my_stats' }
+        ]
+      ]
+    };
+
+    await bot.sendMessage(chatId, playMessage, {
+      parse_mode: 'Markdown',
+      reply_markup: keyboard
+    });
+    
+    console.log('✅ Play message sent successfully to user:', userId);
+    
+  } catch (error) {
+    console.error('❌ Error in /play command:', error);
+    
+    // Send a simple fallback message
+    try {
+      await bot.sendMessage(chatId, '🎮 Welcome to KELALBINGO!\n\nSorry, there was an error. Please try the menu button at the bottom of the chat.');
+    } catch (fallbackError) {
+      console.error('❌ Fallback message also failed:', fallbackError);
+    }
   }
 });
 

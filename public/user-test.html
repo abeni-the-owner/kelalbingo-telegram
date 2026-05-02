@@ -1,0 +1,200 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>User Data Test - KELALBINGO</title>
+    <script src="https://telegram.org/js/telegram-web-app.js"></script>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            background: #1a1a1a;
+            color: white;
+            padding: 20px;
+            margin: 0;
+        }
+
+        .container {
+            max-width: 400px;
+            margin: 0 auto;
+        }
+
+        .section {
+            background: #2a2a2a;
+            padding: 15px;
+            margin: 15px 0;
+            border-radius: 8px;
+            border-left: 4px solid #3390ec;
+        }
+
+        .title {
+            color: #3390ec;
+            font-weight: bold;
+            margin-bottom: 10px;
+        }
+
+        .data {
+            background: #333;
+            padding: 10px;
+            border-radius: 5px;
+            font-family: monospace;
+            font-size: 12px;
+            white-space: pre-wrap;
+        }
+
+        .success {
+            border-left-color: #4caf50;
+        }
+
+        .error {
+            border-left-color: #f44336;
+        }
+
+        .warning {
+            border-left-color: #ff9800;
+        }
+
+        .btn {
+            background: #3390ec;
+            color: white;
+            border: none;
+            padding: 10px 20px;
+            border-radius: 5px;
+            cursor: pointer;
+            margin: 5px;
+            width: 100%;
+        }
+    </style>
+</head>
+
+<body>
+    <div class="container">
+        <h1>🧪 User Data Test</h1>
+
+        <div class="section">
+            <div class="title">Display Name</div>
+            <div id="display-name" class="data">Loading...</div>
+        </div>
+
+        <div class="section">
+            <div class="title">Raw User Data</div>
+            <div id="raw-user" class="data">Loading...</div>
+        </div>
+
+        <div class="section">
+            <div class="title">URL Parameters</div>
+            <div id="url-params" class="data">Loading...</div>
+        </div>
+
+        <div class="section">
+            <div class="title">Telegram Status</div>
+            <div id="telegram-status" class="data">Loading...</div>
+        </div>
+
+        <button class="btn" onclick="refreshTest()">🔄 Refresh Test</button>
+        <button class="btn" onclick="openMainApp()">🎮 Open Main App</button>
+    </div>
+
+    <script>
+        function log(elementId, content, className = '') {
+            const element = document.getElementById(elementId);
+            element.textContent = content;
+            if (className) {
+                element.parentElement.className = `section ${className}`;
+            }
+        }
+
+        function safeStringify(obj) {
+            try {
+                return JSON.stringify(obj, null, 2);
+            } catch (e) {
+                return `Error: ${e.message}`;
+            }
+        }
+
+        function testUserData() {
+            // Test Telegram WebApp
+            let tg = null;
+            let telegramUser = null;
+
+            try {
+                if (window.Telegram && window.Telegram.WebApp) {
+                    tg = window.Telegram.WebApp;
+                    tg.ready();
+                    tg.expand();
+
+                    if (tg.initDataUnsafe && tg.initDataUnsafe.user) {
+                        telegramUser = tg.initDataUnsafe.user;
+                        log('telegram-status', '✅ Telegram WebApp user found', 'success');
+                    } else {
+                        log('telegram-status', '⚠️ Telegram WebApp available but no user data', 'warning');
+                    }
+                } else {
+                    log('telegram-status', '❌ Telegram WebApp not available', 'error');
+                }
+            } catch (error) {
+                log('telegram-status', `❌ Error: ${error.message}`, 'error');
+            }
+
+            // Test URL parameters
+            const urlParams = new URLSearchParams(window.location.search);
+            const urlData = {
+                user_id: urlParams.get('user_id'),
+                username: urlParams.get('username'),
+                first_name: urlParams.get('first_name'),
+                last_name: urlParams.get('last_name'),
+                source: urlParams.get('source')
+            };
+            log('url-params', safeStringify(urlData));
+
+            // Determine final user
+            let finalUser = null;
+            let displayName = 'Guest';
+
+            if (telegramUser) {
+                finalUser = telegramUser;
+                if (telegramUser.first_name && telegramUser.username) {
+                    displayName = `${telegramUser.first_name} (@${telegramUser.username})`;
+                } else if (telegramUser.username) {
+                    displayName = `@${telegramUser.username}`;
+                } else if (telegramUser.first_name) {
+                    displayName = telegramUser.first_name;
+                }
+                log('raw-user', safeStringify(telegramUser), 'success');
+            } else if (urlData.user_id) {
+                finalUser = {
+                    id: parseInt(urlData.user_id),
+                    username: urlData.username,
+                    first_name: urlData.first_name,
+                    last_name: urlData.last_name
+                };
+                if (urlData.first_name && urlData.username) {
+                    displayName = `${urlData.first_name} (@${urlData.username})`;
+                } else if (urlData.username) {
+                    displayName = `@${urlData.username}`;
+                } else if (urlData.first_name) {
+                    displayName = urlData.first_name;
+                }
+                log('raw-user', safeStringify(finalUser), 'warning');
+            } else {
+                log('raw-user', 'No user data available', 'error');
+            }
+
+            log('display-name', displayName, finalUser ? 'success' : 'error');
+        }
+
+        function refreshTest() {
+            testUserData();
+        }
+
+        function openMainApp() {
+            window.location.href = '/';
+        }
+
+        // Run test when page loads
+        setTimeout(testUserData, 500);
+    </script>
+</body>
+
+</html>

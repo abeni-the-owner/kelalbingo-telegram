@@ -56,12 +56,24 @@ async function initTelegram() {
                 tg.enableClosingConfirmation();
             }
             
+            // Get user data with multiple attempts
+            let attempts = 0;
+            const maxAttempts = 10;
+            
+            while (attempts < maxAttempts && (!tg.initDataUnsafe || !tg.initDataUnsafe.user)) {
+                debugLog(`🔄 Attempt ${attempts + 1}: Waiting for user data...`);
+                await new Promise(resolve => setTimeout(resolve, 200));
+                attempts++;
+            }
+            
             // Get user data
             if (tg.initDataUnsafe && tg.initDataUnsafe.user) {
                 telegramUser = tg.initDataUnsafe.user;
                 debugLog('✅ Telegram user found: ' + (telegramUser.username || telegramUser.first_name));
                 debugLog('📱 User ID: ' + telegramUser.id);
                 debugLog('👤 Username: ' + (telegramUser.username || 'Not set'));
+                debugLog('👤 First name: ' + (telegramUser.first_name || 'Not set'));
+                debugLog('👤 Last name: ' + (telegramUser.last_name || 'Not set'));
                 debugLog('📞 Phone: ' + (telegramUser.phone_number || 'Not provided'));
                 
                 // Validate init data
@@ -71,11 +83,17 @@ async function initTelegram() {
                     debugLog('⚠️ No init data - running in test mode');
                 }
             } else {
-                debugLog('⚠️ No user data in initDataUnsafe');
+                debugLog('⚠️ No user data in initDataUnsafe after ' + attempts + ' attempts');
                 if (tg.initDataUnsafe) {
                     debugLog('🔍 Available data: ' + JSON.stringify(tg.initDataUnsafe));
                 } else {
                     debugLog('❌ No initDataUnsafe object');
+                }
+                
+                // Try to get user data from Telegram object directly
+                if (tg.WebAppUser) {
+                    telegramUser = tg.WebAppUser;
+                    debugLog('✅ Found user in WebAppUser: ' + (telegramUser.username || telegramUser.first_name));
                 }
             }
             
@@ -357,7 +375,15 @@ async function registerUser(user) {
 // Update UI with user data
 function updateUI(user, balance) {
     // Display name (prefer first_name, fallback to username, then Guest)
-    const displayName = user.first_name || user.username || 'Guest';
+    let displayName = user.first_name || user.username || 'Guest';
+    
+    // If we have both first_name and username, show both
+    if (user.first_name && user.username) {
+        displayName = `${user.first_name} (@${user.username})`;
+    } else if (user.username && !user.first_name) {
+        displayName = `@${user.username}`;
+    }
+    
     document.getElementById('username').textContent = displayName;
     
     // Update balance info
@@ -366,6 +392,8 @@ function updateUI(user, balance) {
     
     // Add user info to debug log
     debugLog('👤 Display name: ' + displayName);
+    debugLog('👤 First name: ' + (user.first_name || 'Not set'));
+    debugLog('👤 Username: ' + (user.username || 'Not set'));
     if (user.phone_number) {
         debugLog('📞 Phone: ' + user.phone_number);
     }

@@ -175,16 +175,42 @@
                     id: user.id,
                     username: user.username || user.first_name || 'User'
                 };
-                debug('✅ User: ' + currentUser.username + ' (ID: ' + currentUser.id + ')');
+                debug('✅ User from Telegram: ' + currentUser.username + ' (ID: ' + currentUser.id + ')');
+                debug('👤 First name: ' + (user.first_name || 'Not set'));
+                debug('👤 Username: ' + (user.username || 'Not set'));
+                debug('👤 Last name: ' + (user.last_name || 'Not set'));
             } else {
-                currentUser = {
-                    id: Date.now(),
-                    username: 'Guest'
-                };
-                debug('⚠️ No Telegram user, using guest mode');
+                // Try URL parameters as fallback
+                const urlParams = new URLSearchParams(window.location.search);
+                const urlUserId = urlParams.get('user_id');
+                const urlUsername = urlParams.get('username');
+                const urlFirstName = urlParams.get('first_name');
+
+                if (urlUserId) {
+                    currentUser = {
+                        id: parseInt(urlUserId),
+                        username: urlFirstName || urlUsername || 'User'
+                    };
+                    debug('✅ User from URL: ' + currentUser.username + ' (ID: ' + currentUser.id + ')');
+                } else {
+                    currentUser = {
+                        id: Date.now(),
+                        username: 'Guest'
+                    };
+                    debug('⚠️ No user data available, using guest mode');
+                }
             }
-            document.getElementById('username').textContent = currentUser.username;
-            setStatus('👤 User: ' + currentUser.username);
+
+            // Display username with more info
+            let displayName = currentUser.username;
+            if (user && user.first_name && user.username) {
+                displayName = `${user.first_name} (@${user.username})`;
+            } else if (user && user.username && !user.first_name) {
+                displayName = `@${user.username}`;
+            }
+
+            document.getElementById('username').textContent = displayName;
+            setStatus('👤 User: ' + displayName);
         } catch (e) {
             debug('❌ User error: ' + e.message);
             currentUser = { id: 1, username: 'Error' };
