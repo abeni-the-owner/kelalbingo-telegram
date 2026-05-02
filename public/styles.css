@@ -34,6 +34,16 @@ body {
     min-height: 100vh;
 }
 
+/* Force hide loading after 2 seconds */
+#loading.force-hide {
+    display: none !important;
+}
+
+/* Force show game screen */
+#game-screen.force-show {
+    display: block !important;
+}
+
 .loader {
     border: 4px solid #f3f3f3;
     border-top: 4px solid var(--tg-theme-button-color, #3390ec);

@@ -1,0 +1,205 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>KELALBINGO - Minimal</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: Arial, sans-serif;
+            background: #1a1a1a;
+            color: white;
+            padding: 15px;
+            min-height: 100vh;
+        }
+
+        .header {
+            text-align: center;
+            margin-bottom: 20px;
+            background: #333;
+            padding: 15px;
+            border-radius: 10px;
+        }
+
+        .cards-section {
+            background: #2a2a2a;
+            padding: 15px;
+            border-radius: 10px;
+            margin-bottom: 20px;
+        }
+
+        .cards-grid {
+            display: grid;
+            grid-template-columns: repeat(6, 1fr);
+            gap: 8px;
+            margin: 15px 0;
+        }
+
+        .card {
+            background: #3390ec;
+            color: white;
+            border: none;
+            border-radius: 6px;
+            padding: 12px 4px;
+            font-size: 14px;
+            font-weight: bold;
+            cursor: pointer;
+            transition: background 0.2s;
+        }
+
+        .card:hover {
+            background: #2980d9;
+        }
+
+        .card.selected {
+            background: #4caf50;
+        }
+
+        .card.taken {
+            background: #666;
+            cursor: not-allowed;
+        }
+
+        .selected-info {
+            background: #333;
+            padding: 15px;
+            border-radius: 10px;
+            margin-bottom: 15px;
+        }
+
+        .btn {
+            width: 100%;
+            padding: 15px;
+            background: #4caf50;
+            color: white;
+            border: none;
+            border-radius: 8px;
+            font-size: 16px;
+            font-weight: bold;
+            cursor: pointer;
+        }
+
+        .btn:disabled {
+            background: #666;
+            cursor: not-allowed;
+        }
+
+        .debug {
+            background: #222;
+            padding: 10px;
+            border-radius: 5px;
+            font-size: 12px;
+            margin: 10px 0;
+            max-height: 100px;
+            overflow-y: auto;
+        }
+    </style>
+</head>
+
+<body>
+    <div class="header">
+        <h1>🎮 KELALBINGO</h1>
+        <p>User: <span id="user">Guest</span></p>
+        <p>Status: <span id="status">Ready</span></p>
+    </div>
+
+    <div class="debug" id="log">App loaded successfully!<br></div>
+
+    <div class="cards-section">
+        <h3>🃏 Select Your Cards</h3>
+        <div class="cards-grid" id="cards"></div>
+    </div>
+
+    <div class="selected-info">
+        <h4>Selected: <span id="count">0</span> cards</h4>
+        <p id="selected">None</p>
+    </div>
+
+    <button class="btn" id="start" onclick="startGame()">Start Game</button>
+
+    <script>
+        // Immediate execution - no delays
+        const selected = [];
+
+        function log(msg) {
+            document.getElementById('log').innerHTML += new Date().toLocaleTimeString() + ': ' + msg + '<br>';
+        }
+
+        function updateDisplay() {
+            const countEl = document.getElementById('count');
+            const selectedEl = document.getElementById('selected');
+            const startBtn = document.getElementById('start');
+
+            countEl.textContent = selected.length;
+            selectedEl.textContent = selected.length ? selected.map(n => '#' + n).join(', ') : 'None';
+            startBtn.disabled = selected.length === 0;
+            startBtn.textContent = selected.length ? `Start Game (${selected.length})` : 'Start Game';
+        }
+
+        function toggleCard(num) {
+            const index = selected.indexOf(num);
+            const btn = document.querySelector(`[data-card="${num}"]`);
+
+            if (index > -1) {
+                selected.splice(index, 1);
+                btn.classList.remove('selected');
+                log('Removed card ' + num);
+            } else {
+                selected.push(num);
+                btn.classList.add('selected');
+                log('Added card ' + num);
+            }
+            updateDisplay();
+        }
+
+        function startGame() {
+            if (selected.length === 0) return;
+            alert(`🎮 Starting with ${selected.length} cards: ${selected.join(', ')}`);
+            log('Game started!');
+        }
+
+        // Initialize immediately
+        log('Initializing...');
+
+        // Get Telegram user if available
+        try {
+            if (window.Telegram?.WebApp) {
+                const tg = window.Telegram.WebApp;
+                tg.expand();
+                tg.ready();
+
+                const user = tg.initDataUnsafe?.user;
+                if (user) {
+                    document.getElementById('user').textContent = user.username || user.first_name;
+                    log('Telegram user: ' + (user.username || user.first_name));
+                }
+            }
+        } catch (e) {
+            log('Telegram not available: ' + e.message);
+        }
+
+        // Create cards immediately
+        const cardsContainer = document.getElementById('cards');
+        for (let i = 1; i <= 50; i++) {
+            const btn = document.createElement('button');
+            btn.className = 'card';
+            btn.textContent = i;
+            btn.setAttribute('data-card', i);
+            btn.onclick = () => toggleCard(i);
+            cardsContainer.appendChild(btn);
+        }
+
+        updateDisplay();
+        document.getElementById('status').textContent = 'Ready to play!';
+        log('50 cards loaded - ready!');
+    </script>
+</body>
+
+</html>

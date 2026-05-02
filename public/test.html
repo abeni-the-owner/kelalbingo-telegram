@@ -1,0 +1,119 @@
+<!DOCTYPE html>
+<html>
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>KELALBINGO Test</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            background: #000;
+            color: #fff;
+            padding: 20px;
+            margin: 0;
+        }
+
+        .card {
+            display: inline-block;
+            background: #3390ec;
+            color: white;
+            padding: 10px;
+            margin: 5px;
+            border: none;
+            border-radius: 5px;
+            cursor: pointer;
+            font-weight: bold;
+        }
+
+        .card.selected {
+            background: #4caf50;
+        }
+
+        .info {
+            background: #333;
+            padding: 15px;
+            margin: 15px 0;
+            border-radius: 5px;
+        }
+    </style>
+</head>
+
+<body>
+    <h1>🎮 KELALBINGO - Test Version</h1>
+
+    <div class="info">
+        <p>User: <span id="user">Loading...</span></p>
+        <p>Selected: <span id="selected">0</span> cards</p>
+        <p>Status: <span id="status">Ready</span></p>
+    </div>
+
+    <h3>Cards (Click to select):</h3>
+    <div id="cards"></div>
+
+    <div class="info">
+        <button onclick="startGame()"
+            style="padding: 15px; background: #4caf50; color: white; border: none; border-radius: 5px; font-size: 16px; width: 100%;">
+            Start Game
+        </button>
+    </div>
+
+    <script>
+        // Immediate execution
+        document.getElementById('status').textContent = 'Initializing...';
+
+        const selectedCards = [];
+
+        // Try to get Telegram user
+        try {
+            if (window.Telegram && window.Telegram.WebApp) {
+                const tg = window.Telegram.WebApp;
+                tg.expand();
+                tg.ready();
+
+                const user = tg.initDataUnsafe && tg.initDataUnsafe.user;
+                if (user) {
+                    document.getElementById('user').textContent = user.username || user.first_name || 'Telegram User';
+                } else {
+                    document.getElementById('user').textContent = 'Guest (No Telegram data)';
+                }
+            } else {
+                document.getElementById('user').textContent = 'Guest (No Telegram)';
+            }
+        } catch (e) {
+            document.getElementById('user').textContent = 'Guest (Error: ' + e.message + ')';
+        }
+
+        // Create cards
+        const cardsContainer = document.getElementById('cards');
+        for (let i = 1; i <= 50; i++) {
+            const btn = document.createElement('button');
+            btn.className = 'card';
+            btn.textContent = i;
+            btn.onclick = function () {
+                const index = selectedCards.indexOf(i);
+                if (index > -1) {
+                    selectedCards.splice(index, 1);
+                    btn.classList.remove('selected');
+                } else {
+                    selectedCards.push(i);
+                    btn.classList.add('selected');
+                }
+                document.getElementById('selected').textContent = selectedCards.length;
+            };
+            cardsContainer.appendChild(btn);
+        }
+
+        function startGame() {
+            if (selectedCards.length === 0) {
+                alert('Please select at least one card!');
+                return;
+            }
+            alert('Starting game with ' + selectedCards.length + ' cards: ' + selectedCards.join(', '));
+        }
+
+        document.getElementById('status').textContent = 'Ready to play!';
+    </script>
+</body>
+
+</html>

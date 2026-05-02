@@ -13,6 +13,7 @@
             padding: 20px;
             background: #1a1a1a;
             color: white;
+            min-height: 100vh;
         }
 
         .container {
@@ -28,7 +29,7 @@
         .cards-grid {
             display: grid;
             grid-template-columns: repeat(6, 1fr);
-            gap: 10px;
+            gap: 8px;
             margin: 20px 0;
         }
 
@@ -37,10 +38,15 @@
             color: white;
             border: none;
             border-radius: 8px;
-            padding: 15px 5px;
+            padding: 12px 5px;
             font-size: 14px;
             font-weight: bold;
             cursor: pointer;
+            transition: all 0.2s;
+        }
+
+        .card-btn:hover {
+            transform: scale(1.05);
         }
 
         .card-btn.selected {
@@ -57,6 +63,7 @@
             padding: 15px;
             border-radius: 8px;
             margin: 20px 0;
+            min-height: 60px;
         }
 
         .btn {
@@ -69,6 +76,7 @@
             font-size: 16px;
             font-weight: bold;
             cursor: pointer;
+            margin-top: 10px;
         }
 
         .btn:disabled {
@@ -82,6 +90,16 @@
             border-radius: 5px;
             font-size: 12px;
             margin: 10px 0;
+            max-height: 150px;
+            overflow-y: auto;
+        }
+
+        .status {
+            background: #2d5a2d;
+            padding: 10px;
+            border-radius: 5px;
+            margin: 10px 0;
+            text-align: center;
         }
     </style>
 </head>
@@ -94,6 +112,7 @@
             <p>Balance: <span id="balance">0</span> Birr</p>
         </div>
 
+        <div class="status" id="status">✅ Ready to play!</div>
         <div class="debug" id="debug"></div>
 
         <h3>🃏 Select Your Cards</h3>
@@ -103,11 +122,15 @@
 
         <div class="selected-list">
             <h4>Selected Cards:</h4>
-            <div id="selected-cards">None</div>
+            <div id="selected-cards">None selected</div>
         </div>
 
         <button class="btn" id="start-btn" disabled onclick="startGame()">
-            Start Game
+            Start Game (0 cards)
+        </button>
+
+        <button class="btn" onclick="testConnection()" style="background: #666; margin-top: 10px;">
+            Test Server Connection
         </button>
     </div>
 
@@ -115,10 +138,19 @@
         // Simple debug function
         function debug(msg) {
             console.log(msg);
-            document.getElementById('debug').innerHTML += msg + '<br>';
+            const debugEl = document.getElementById('debug');
+            debugEl.innerHTML += new Date().toLocaleTimeString() + ': ' + msg + '<br>';
+            debugEl.scrollTop = debugEl.scrollHeight;
         }
 
-        debug('🎮 Starting simple version...');
+        function setStatus(msg, color = '#2d5a2d') {
+            const statusEl = document.getElementById('status');
+            statusEl.textContent = msg;
+            statusEl.style.background = color;
+        }
+
+        debug('🎮 Starting KELALBINGO Simple...');
+        setStatus('🚀 Initializing...');
 
         // Initialize Telegram
         let tg;
@@ -126,10 +158,12 @@
             tg = window.Telegram?.WebApp || {};
             if (tg.expand) tg.expand();
             if (tg.ready) tg.ready();
-            debug('✅ Telegram initialized');
+            debug('✅ Telegram Web App initialized');
+            setStatus('📱 Telegram connected');
         } catch (e) {
             debug('❌ Telegram error: ' + e.message);
             tg = { initDataUnsafe: {} };
+            setStatus('⚠️ Telegram not available', '#5a2d2d');
         }
 
         // Get user
@@ -141,32 +175,36 @@
                     id: user.id,
                     username: user.username || user.first_name || 'User'
                 };
-                debug('✅ User: ' + currentUser.username);
+                debug('✅ User: ' + currentUser.username + ' (ID: ' + currentUser.id + ')');
             } else {
                 currentUser = {
                     id: Date.now(),
                     username: 'Guest'
                 };
-                debug('⚠️ No user, using guest');
+                debug('⚠️ No Telegram user, using guest mode');
             }
             document.getElementById('username').textContent = currentUser.username;
+            setStatus('👤 User: ' + currentUser.username);
         } catch (e) {
             debug('❌ User error: ' + e.message);
             currentUser = { id: 1, username: 'Error' };
+            setStatus('❌ User error', '#5a2d2d');
         }
 
         // State
         let selectedCards = [];
         let allCards = [];
+        let takenCards = {}; // cardId -> userId
 
         // Generate sample cards
         function generateCards() {
-            debug('📊 Generating cards...');
+            debug('📊 Generating 50 sample cards...');
             allCards = [];
             for (let i = 1; i <= 50; i++) {
                 allCards.push({ id: i, number: i });
             }
             displayCards();
+            setStatus('🃏 50 cards loaded');
         }
 
         // Display cards
@@ -179,8 +217,12 @@
                 btn.className = 'card-btn';
                 btn.textContent = card.number;
 
+                // Check card status
                 if (selectedCards.includes(card.id)) {
                     btn.classList.add('selected');
+                } else if (takenCards[card.id] && takenCards[card.id] !== currentUser.id) {
+                    btn.classList.add('taken');
+                    btn.disabled = true;
                 }
 
                 btn.onclick = () => toggleCard(card.id);
@@ -192,15 +234,57 @@
 
         // Toggle card selection
         function toggleCard(cardId) {
+            // Check if taken by someone else
+            if (takenCards[cardId] && takenCards[cardId] !== currentUser.id) {
+                alert('Card ' + cardId + ' is already taken by another player');
+                return;
+            }
+
             const index = selectedCards.indexOf(cardId);
             if (index > -1) {
+                // Deselect
                 selectedCards.splice(index, 1);
-                debug('➖ Removed card ' + cardId);
+                delete takenCards[cardId];
+                debug('➖ Deselected card ' + cardId);
             } else {
+                // Select
                 selectedCards.push(cardId);
-                debug('➕ Added card ' + cardId);
+                takenCards[cardId] = currentUser.id;
+                debug('➕ Selected card ' + cardId);
             }
+
             displayCards();
+
+            // Try to sync with server (non-blocking)
+            syncWithServer(cardId, index === -1).catch(err => {
+                debug('⚠️ Sync failed: ' + err.message);
+            });
+        }
+
+        // Sync with server (optional)
+        async function syncWithServer(cardId, isSelect) {
+            try {
+                const response = await fetch('/api/cards/sync', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'X-Telegram-User-Id': currentUser.id
+                    },
+                    body: JSON.stringify({
+                        cardId: cardId,
+                        action: isSelect ? 'select' : 'deselect',
+                        userId: currentUser.id
+                    })
+                });
+
+                if (response.ok) {
+                    debug('✅ Synced card ' + cardId + ' with server');
+                } else {
+                    debug('⚠️ Server sync failed: ' + response.status);
+                }
+            } catch (error) {
+                debug('⚠️ Network error: ' + error.message);
+            }
         }
 
         // Update selected display
@@ -209,11 +293,13 @@
             const btn = document.getElementById('start-btn');
 
             if (selectedCards.length === 0) {
-                container.textContent = 'None';
+                container.textContent = 'None selected';
                 btn.disabled = true;
+                btn.textContent = 'Start Game (0 cards)';
             } else {
                 container.textContent = selectedCards.map(id => '#' + id).join(', ');
                 btn.disabled = false;
+                btn.textContent = `Start Game (${selectedCards.length} cards)`;
             }
         }
 
@@ -221,20 +307,50 @@
         function startGame() {
             if (selectedCards.length === 0) return;
 
+            const message = `🎮 Starting game with ${selectedCards.length} cards: ${selectedCards.join(', ')}\n\n🚧 Game functionality coming soon!`;
+
             if (tg.showAlert) {
-                tg.showAlert(`Starting game with ${selectedCards.length} cards: ${selectedCards.join(', ')}`);
+                tg.showAlert(message);
             } else {
-                alert(`Starting game with ${selectedCards.length} cards: ${selectedCards.join(', ')}`);
+                alert(message);
+            }
+
+            debug('🎮 Game started with cards: ' + selectedCards.join(', '));
+        }
+
+        // Test server connection
+        async function testConnection() {
+            setStatus('🔄 Testing connection...', '#5a5a2d');
+            debug('🔄 Testing server connection...');
+
+            try {
+                const response = await fetch('/health');
+                if (response.ok) {
+                    const data = await response.json();
+                    debug('✅ Server online: ' + data.status);
+                    setStatus('✅ Server connected');
+                } else {
+                    debug('❌ Server error: ' + response.status);
+                    setStatus('❌ Server error: ' + response.status, '#5a2d2d');
+                }
+            } catch (error) {
+                debug('❌ Connection failed: ' + error.message);
+                setStatus('❌ No connection', '#5a2d2d');
             }
         }
 
         // Initialize
         try {
-            debug('🚀 Initializing...');
+            debug('🚀 Initializing game...');
             generateCards();
-            debug('✅ Ready!');
+            debug('✅ Game ready!');
+            setStatus('✅ Ready to play!');
+
+            // Test connection in background
+            setTimeout(testConnection, 1000);
         } catch (e) {
             debug('❌ Init error: ' + e.message);
+            setStatus('❌ Initialization failed', '#5a2d2d');
         }
     </script>
 </body>

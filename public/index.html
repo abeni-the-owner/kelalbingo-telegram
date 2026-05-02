@@ -6,29 +6,32 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
     <title>KELALBINGO</title>
     <script src="https://telegram.org/js/telegram-web-app.js"></script>
-    <script src="https://cdn.socket.io/4.6.1/socket.io.min.js" crossorigin="anonymous"></script>
+    <script>
+        // Fallback for Socket.IO if CDN fails
+        window.socketIOLoaded = false;
+        function loadSocketIO() {
+            const script = document.createElement('script');
+            script.src = 'https://cdn.socket.io/4.6.1/socket.io.min.js';
+            script.crossOrigin = 'anonymous';
+            script.onload = () => {
+                window.socketIOLoaded = true;
+                console.log('✅ Socket.IO loaded');
+            };
+            script.onerror = () => {
+                console.warn('❌ Socket.IO CDN failed, continuing without real-time features');
+                window.socketIOLoaded = false;
+            };
+            document.head.appendChild(script);
+        }
+        loadSocketIO();
+    </script>
     <link rel="stylesheet" href="styles.css">
 </head>
 
 <body>
     <div id="app">
-        <!-- Loading Screen -->
-        <div id="loading" class="screen active">
-            <div class="loader"></div>
-            <p>Loading KELALBINGO...</p>
-            <div id="debug-log"
-                style="margin-top: 20px; font-size: 12px; color: #666; text-align: left; max-width: 300px;"></div>
-        </div>
-
-        <!-- Login Screen -->
-        <div id="login-screen" class="screen">
-            <div class="logo">🎮</div>
-            <h1>KELALBINGO</h1>
-            <p>Welcome! Authenticating...</p>
-        </div>
-
-        <!-- Main Game Screen -->
-        <div id="game-screen" class="screen">
+        <!-- Main Game Screen - SHOW IMMEDIATELY -->
+        <div id="game-screen" class="screen active">
             <!-- Card Selection Section (Top) -->
             <div class="card-selection-section">
                 <h3 class="section-title">🃏 Select Your Cards</h3>
@@ -57,6 +60,11 @@
             <!-- Round Info -->
             <div class="round-info">
                 <h2>ROUND <span id="round-number">1</span></h2>
+            </div>
+
+            <!-- Debug Log -->
+            <div id="debug-log"
+                style="background: #222; color: #0f0; padding: 10px; border-radius: 5px; font-size: 12px; margin: 10px 0; max-height: 100px; overflow-y: auto;">
             </div>
 
             <!-- Navigation Tabs -->
@@ -92,6 +100,45 @@
     </div>
 
     <script src="app.js"></script>
+
+    <!-- Emergency fallback to show interface -->
+    <script>
+        // Force show interface after 3 seconds no matter what
+        setTimeout(() => {
+            console.log('🚨 Emergency fallback: Forcing interface to show');
+            const loading = document.getElementById('loading');
+            const gameScreen = document.getElementById('game-screen');
+
+            if (loading) {
+                loading.style.display = 'none';
+                loading.classList.add('force-hide');
+            }
+
+            if (gameScreen) {
+                gameScreen.style.display = 'block';
+                gameScreen.classList.add('force-show', 'active');
+            }
+
+            // Show basic cards if none loaded
+            const cardsGrid = document.getElementById('cards-grid');
+            if (cardsGrid && cardsGrid.innerHTML.includes('Loading')) {
+                let html = '';
+                for (let i = 1; i <= 50; i++) {
+                    html += `<button class="card-btn-compact" onclick="alert('Card ${i} selected')">${i}</button>`;
+                }
+                cardsGrid.innerHTML = html;
+            }
+        }, 3000);
+
+        // Also try after 1 second
+        setTimeout(() => {
+            if (document.getElementById('loading').style.display !== 'none') {
+                console.log('⚡ Quick fallback: Showing interface early');
+                document.getElementById('loading').style.display = 'none';
+                document.getElementById('game-screen').style.display = 'block';
+            }
+        }, 1000);
+    </script>
 </body>
 
 </html>

@@ -6,20 +6,43 @@ tg.ready();
 // API Configuration
 const API_URL = window.location.origin + '/api';
 
-// Initialize Socket.IO (with error handling)
-let socket;
-try {
-    socket = io(window.location.origin, { 
-        transports: ['websocket', 'polling'],
-        timeout: 5000
-    });
-} catch (e) {
-    console.error('Socket.IO error:', e);
-    socket = { 
-        on: () => {}, 
-        emit: () => {},
-        connected: false 
-    };
+// Initialize Socket.IO with better error handling
+let socket = null;
+let socketReady = false;
+
+function initSocket() {
+    try {
+        if (typeof io !== 'undefined') {
+            socket = io(window.location.origin, { 
+                transports: ['websocket', 'polling'],
+                timeout: 5000,
+                forceNew: true
+            });
+            
+            socket.on('connect', () => {
+                socketReady = true;
+                console.log('🔌 Socket connected');
+            });
+            
+            socket.on('connect_error', (error) => {
+                console.error('Socket error:', error);
+                socketReady = false;
+            });
+        } else {
+            console.warn('Socket.IO not available, using fallback mode');
+        }
+    } catch (e) {
+        console.error('Socket.IO initialization error:', e);
+    }
+    
+    // Create fallback socket object
+    if (!socket) {
+        socket = { 
+            on: () => {}, 
+            emit: () => {},
+            connected: false 
+        };
+    }
 }
 
 // State
@@ -36,36 +59,61 @@ function debugLog(message) {
         const debugEl = document.getElementById('debug-log');
         if (debugEl) {
             debugEl.innerHTML += message + '<br>';
+            debugEl.scrollTop = debugEl.scrollHeight;
         }
     } catch (e) {
         console.error('Debug log error:', e);
     }
 }
 
+// Show interface immediately - no delays
+debugLog('🎮 KELALBINGO Starting...');
+
 // Force show game screen immediately
-debugLog('🎮 App starting...');
-setTimeout(() => {
-    debugLog('⏰ Showing game screen NOW');
+function forceShowInterface() {
+    debugLog('📺 Showing screen: game-screen');
     try {
-        showScreen('game-screen');
+        // Hide loading screen
+        const loading = document.getElementById('loading');
+        if (loading) {
+            loading.style.display = 'none';
+            loading.classList.remove('active');
+        }
+        
+        // Show game screen
+        const gameScreen = document.getElementById('game-screen');
+        if (gameScreen) {
+            gameScreen.style.display = 'block';
+            gameScreen.classList.add('active');
+            debugLog('✅ Showing: game-screen');
+        } else {
+            debugLog('❌ Game screen not found');
+        }
     } catch (e) {
-        debugLog('❌ Error: ' + e.message);
-        // Force show by manipulating DOM directly
-        document.getElementById('loading').style.display = 'none';
-        document.getElementById('game-screen').style.display = 'block';
+        debugLog('❌ Error showing interface: ' + e.message);
     }
-}, 50);
+}
+
+// Show interface immediately when DOM is ready
+if (document.readyState === 'loading') {
+    document.addEventListener('DOMContentLoaded', forceShowInterface);
+} else {
+    forceShowInterface();
+}
 let takenCards = {}; // Track cards taken by others: { cardId: userId }
 
 // Initialize app
 async function init() {
     debugLog('🚀 Init started');
     
+    // Initialize Socket.IO first
+    initSocket();
+    
     // Get Telegram user data
-    const user = tg.initDataUnsafe.user;
+    const user = tg.initDataUnsafe?.user;
     
     if (user) {
-        debugLog('✅ User: ' + user.username);
+        debugLog('✅ User: ' + (user.username || user.first_name));
         currentUser = {
             id: user.id,
             telegram_id: user.id,
@@ -85,20 +133,39 @@ async function init() {
     // Update UI immediately
     updateUI(currentUser, { balance: 0, profit: 0 });
     
-    // Show interface immediately
-    debugLog('📺 Showing interface');
-    showScreen('game-screen');
-    
-    // Load data in background
-    debugLog('📊 Loading data...');
+    // Load data in background (don't wait)
+    debugLog('📊 Loading data in background...');
     loadGameData().catch(err => {
         debugLog('❌ Load error: ' + err.message);
+        // Generate sample cards as fallback
+        generateSampleCards();
     });
     
-    // Register user in background
+    // Register user in background (don't wait)
     registerUser(currentUser).catch(err => {
         debugLog('❌ Register error: ' + err.message);
     });
+    
+    debugLog('✅ Init completed');
+}
+
+// Generate sample cards as fallback
+function generateSampleCards() {
+    debugLog('📊 Generating sample cards...');
+    allCards = [];
+    for (let i = 1; i <= 50; i++) {
+        allCards.push({
+            id: i,
+            card_number: i,
+            b_column: [1, 2, 3, 4, 5],
+            i_column: [16, 17, 18, 19, 20],
+            n_column: [31, 32, 0, 34, 35],
+            g_column: [46, 47, 48, 49, 50],
+            o_column: [61, 62, 63, 64, 65]
+        });
+    }
+    displayCards(allCards);
+    debugLog('✅ Sample cards generated');
 }
 
 // Register user in database (background task)
@@ -170,6 +237,7 @@ async function loadRound() {
 // Load available cards
 async function loadCards() {
     try {
+        debugLog('📊 Loading cards from server...');
         const response = await fetch(`${API_URL}/cards`, {
             headers: {
                 'X-Telegram-User-Id': tg.initDataUnsafe.user?.id || currentUser?.telegram_id || 1
@@ -187,11 +255,17 @@ async function loadCards() {
         await loadMyCards();
         
         displayCards(data.cards);
+        debugLog('✅ Cards loaded from server');
     } catch (error) {
+        debugLog('❌ Server cards failed: ' + error.message);
         console.error('Load cards error:', error);
+        
+        // Use sample cards as fallback
+        generateSampleCards();
+        
         const container = document.getElementById('cards-grid');
-        if (container) {
-            container.innerHTML = `<p class="error">Failed to load cards. <button onclick="loadCards()" class="btn btn-secondary">Retry</button></p>`;
+        if (container && allCards.length === 0) {
+            container.innerHTML = `<p class="error">Using sample cards. <button onclick="loadCards()" class="btn btn-secondary">Retry Server</button></p>`;
         }
     }
 }
@@ -258,7 +332,12 @@ function toggleCardSelection(cardId, cardNumber) {
     
     // Check if card is taken by someone else
     if (takenCards[cardId] && takenCards[cardId] !== myUserId) {
-        tg.showAlert(`Card #${cardNumber} is already selected by another player`);
+        const alertMsg = `Card #${cardNumber} is already selected by another player`;
+        if (tg.showAlert) {
+            tg.showAlert(alertMsg);
+        } else {
+            alert(alertMsg);
+        }
         return;
     }
     
@@ -271,15 +350,17 @@ function toggleCardSelection(cardId, cardNumber) {
         // Remove from taken cards
         delete takenCards[cardId];
         
-        // Emit to server (real-time)
-        socket.emit('deselect-card', {
-            roundNumber: currentRound,
-            cardId: cardId,
-            cardNumber: cardNumber,
-            userId: myUserId
-        });
+        // Emit to server (real-time) - only if socket is ready
+        if (socketReady && socket) {
+            socket.emit('deselect-card', {
+                roundNumber: currentRound,
+                cardId: cardId,
+                cardNumber: cardNumber,
+                userId: myUserId
+            });
+        }
         
-        console.log(`Deselected card #${cardNumber}`);
+        debugLog(`➖ Deselected card #${cardNumber}`);
     } else {
         // Select card
         selectedCards.push({ id: cardId, number: cardNumber });
@@ -287,15 +368,17 @@ function toggleCardSelection(cardId, cardNumber) {
         // Mark as taken by me
         takenCards[cardId] = myUserId;
         
-        // Emit to server (real-time)
-        socket.emit('select-card', {
-            roundNumber: currentRound,
-            cardId: cardId,
-            cardNumber: cardNumber,
-            userId: myUserId
-        });
+        // Emit to server (real-time) - only if socket is ready
+        if (socketReady && socket) {
+            socket.emit('select-card', {
+                roundNumber: currentRound,
+                cardId: cardId,
+                cardNumber: cardNumber,
+                userId: myUserId
+            });
+        }
         
-        console.log(`Selected card #${cardNumber}`);
+        debugLog(`➕ Selected card #${cardNumber}`);
     }
     
     updateSelectedCards();
@@ -526,109 +609,146 @@ document.querySelectorAll('.tab').forEach(tab => {
 });
 
 // Start game button
-document.getElementById('start-game-btn').addEventListener('click', () => {
-    if (selectedCards.length === 0) {
-        tg.showAlert('Please select at least one card');
-        return;
-    }
-    tg.showAlert(`Starting game with ${selectedCards.length} card(s)!\n\nGame functionality coming soon!`);
-});
-
-// Initialize on load
-init();
-
-
-// Socket.IO real-time events
-socket.on('connect', () => {
-    console.log('🔌 Connected to server');
-    // Join current round room with user ID
-    if (currentUser) {
-        socket.emit('join-round', { 
-            roundNumber: currentRound, 
-            userId: currentUser.telegram_id 
+document.addEventListener('DOMContentLoaded', () => {
+    const startBtn = document.getElementById('start-game-btn');
+    if (startBtn) {
+        startBtn.addEventListener('click', () => {
+            if (selectedCards.length === 0) {
+                const alertMsg = 'Please select at least one card';
+                if (tg.showAlert) {
+                    tg.showAlert(alertMsg);
+                } else {
+                    alert(alertMsg);
+                }
+                return;
+            }
+            const gameMsg = `Starting game with ${selectedCards.length} card(s)!\n\nGame functionality coming soon!`;
+            if (tg.showAlert) {
+                tg.showAlert(gameMsg);
+            } else {
+                alert(gameMsg);
+            }
         });
     }
 });
 
-socket.on('connect_error', (error) => {
-    console.error('Socket connection error:', error);
-    // Continue without real-time features
-});
+// Initialize on load
+if (document.readyState === 'loading') {
+    document.addEventListener('DOMContentLoaded', init);
+} else {
+    init();
+}
 
-socket.on('disconnect', () => {
-    console.log('🔌 Disconnected from server');
-});
 
-// Receive current card selections when joining
-socket.on('current-selections', (selections) => {
-    console.log('Current selections:', selections);
-    const myUserId = currentUser?.telegram_id || tg.initDataUnsafe.user?.id;
+// Socket.IO real-time events
+function setupSocketEvents() {
+    if (!socket) return;
     
-    // Clear and rebuild taken cards
-    takenCards = {};
-    selectedCards = [];
-    
-    // Process all selections
-    Object.keys(selections).forEach(cardId => {
-        const userId = selections[cardId];
-        takenCards[parseInt(cardId)] = userId;
-        
-        // If it's my card, add to selected cards
-        if (userId === myUserId) {
-            const card = allCards.find(c => c.id === parseInt(cardId));
-            if (card) {
-                selectedCards.push({ id: parseInt(cardId), number: card.card_number });
-            }
+    socket.on('connect', () => {
+        socketReady = true;
+        debugLog('🔌 Connected to server');
+        // Join current round room with user ID
+        if (currentUser) {
+            socket.emit('join-round', { 
+                roundNumber: currentRound, 
+                userId: currentUser.telegram_id 
+            });
         }
     });
-    
-    displayCards(allCards);
-    updateSelectedCards();
-    updateStartButton();
-});
 
-// Real-time: Card selected by any user
-socket.on('card-selected', (data) => {
-    console.log('Card selected:', data);
-    
-    // Mark card as taken
-    takenCards[data.cardId] = data.userId;
-    
-    // If it's my card, add to selected
-    const myUserId = currentUser?.telegram_id || tg.initDataUnsafe.user?.id;
-    if (data.userId === myUserId) {
-        if (!selectedCards.some(c => c.id === data.cardId)) {
-            selectedCards.push({ id: data.cardId, number: data.cardNumber });
+    socket.on('connect_error', (error) => {
+        console.error('Socket connection error:', error);
+        socketReady = false;
+        debugLog('❌ Socket error: ' + error.message);
+        // Continue without real-time features
+    });
+
+    socket.on('disconnect', () => {
+        socketReady = false;
+        debugLog('🔌 Disconnected from server');
+    });
+
+    // Receive current card selections when joining
+    socket.on('current-selections', (selections) => {
+        console.log('Current selections:', selections);
+        const myUserId = currentUser?.telegram_id || tg.initDataUnsafe.user?.id;
+        
+        // Clear and rebuild taken cards
+        takenCards = {};
+        selectedCards = [];
+        
+        // Process all selections
+        Object.keys(selections).forEach(cardId => {
+            const userId = selections[cardId];
+            takenCards[parseInt(cardId)] = userId;
+            
+            // If it's my card, add to selected cards
+            if (userId === myUserId) {
+                const card = allCards.find(c => c.id === parseInt(cardId));
+                if (card) {
+                    selectedCards.push({ id: parseInt(cardId), number: card.card_number });
+                }
+            }
+        });
+        
+        displayCards(allCards);
+        updateSelectedCards();
+        updateStartButton();
+    });
+
+    // Real-time: Card selected by any user
+    socket.on('card-selected', (data) => {
+        console.log('Card selected:', data);
+        
+        // Mark card as taken
+        takenCards[data.cardId] = data.userId;
+        
+        // If it's my card, add to selected
+        const myUserId = currentUser?.telegram_id || tg.initDataUnsafe.user?.id;
+        if (data.userId === myUserId) {
+            if (!selectedCards.some(c => c.id === data.cardId)) {
+                selectedCards.push({ id: data.cardId, number: data.cardNumber });
+                updateSelectedCards();
+                updateStartButton();
+            }
+        }
+        
+        // Refresh display to show taken card
+        displayCards(allCards);
+    });
+
+    // Real-time: Card deselected by any user
+    socket.on('card-deselected', (data) => {
+        console.log('Card released:', data);
+        
+        // Remove from taken cards
+        delete takenCards[data.cardId];
+        
+        // If it was my card, remove from selected
+        const myUserId = currentUser?.telegram_id || tg.initDataUnsafe.user?.id;
+        if (data.userId === myUserId) {
+            selectedCards = selectedCards.filter(c => c.id !== data.cardId);
             updateSelectedCards();
             updateStartButton();
         }
-    }
-    
-    // Refresh display to show taken card
-    displayCards(allCards);
-});
+        
+        // Refresh display to show available card
+        displayCards(allCards);
+    });
 
-// Real-time: Card deselected by any user
-socket.on('card-deselected', (data) => {
-    console.log('Card released:', data);
-    
-    // Remove from taken cards
-    delete takenCards[data.cardId];
-    
-    // If it was my card, remove from selected
-    const myUserId = currentUser?.telegram_id || tg.initDataUnsafe.user?.id;
-    if (data.userId === myUserId) {
-        selectedCards = selectedCards.filter(c => c.id !== data.cardId);
-        updateSelectedCards();
-        updateStartButton();
-    }
-    
-    // Refresh display to show available card
-    displayCards(allCards);
-});
+    // Card already taken by someone else
+    socket.on('card-taken', (data) => {
+        const alertMsg = `Card #${data.cardNumber} is already selected by another player`;
+        if (tg.showAlert) {
+            tg.showAlert(alertMsg);
+        } else {
+            alert(alertMsg);
+        }
+        loadCards(); // Refresh
+    });
+}
 
-// Card already taken by someone else
-socket.on('card-taken', (data) => {
-    tg.showAlert(`Card #${data.cardNumber} is already selected by another player`);
-    loadCards(); // Refresh
-});
+// Setup socket events after initialization
+setTimeout(() => {
+    setupSocketEvents();
+}, 1000);
