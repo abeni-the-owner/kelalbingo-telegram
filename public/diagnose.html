@@ -1,0 +1,270 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Telegram Diagnostics</title>
+    <script src="https://telegram.org/js/telegram-web-app.js"></script>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            background: #1a1a1a;
+            color: #fff;
+            padding: 15px;
+            margin: 0;
+            font-size: 14px;
+        }
+
+        .section {
+            background: #2a2a2a;
+            padding: 15px;
+            margin: 10px 0;
+            border-radius: 8px;
+            border-left: 4px solid #3390ec;
+        }
+
+        .title {
+            color: #3390ec;
+            font-weight: bold;
+            margin-bottom: 10px;
+        }
+
+        .data {
+            background: #333;
+            padding: 10px;
+            border-radius: 5px;
+            font-family: monospace;
+            font-size: 12px;
+            white-space: pre-wrap;
+            word-break: break-all;
+            max-height: 200px;
+            overflow-y: auto;
+        }
+
+        .success {
+            border-left-color: #4caf50;
+        }
+
+        .error {
+            border-left-color: #f44336;
+        }
+
+        .warning {
+            border-left-color: #ff9800;
+        }
+
+        .button {
+            background: #3390ec;
+            color: white;
+            border: none;
+            padding: 10px 20px;
+            border-radius: 5px;
+            cursor: pointer;
+            margin: 5px;
+        }
+    </style>
+</head>
+
+<body>
+    <h1>🔍 Telegram Mini App Diagnostics</h1>
+
+    <div class="section">
+        <div class="title">Environment Check</div>
+        <div id="env-check" class="data">Checking...</div>
+    </div>
+
+    <div class="section">
+        <div class="title">Telegram WebApp Status</div>
+        <div id="webapp-status" class="data">Checking...</div>
+    </div>
+
+    <div class="section">
+        <div class="title">User Data</div>
+        <div id="user-data" class="data">Checking...</div>
+    </div>
+
+    <div class="section">
+        <div class="title">Init Data</div>
+        <div id="init-data" class="data">Checking...</div>
+    </div>
+
+    <div class="section">
+        <div class="title">Platform Info</div>
+        <div id="platform-info" class="data">Checking...</div>
+    </div>
+
+    <div class="section">
+        <div class="title">Actions</div>
+        <button class="button" onclick="testAlert()">Test Alert</button>
+        <button class="button" onclick="testHaptic()">Test Haptic</button>
+        <button class="button" onclick="refreshData()">Refresh</button>
+    </div>
+
+    <script>
+        function log(elementId, content, className = '') {
+            const element = document.getElementById(elementId);
+            element.textContent = content;
+            if (className) {
+                element.parentElement.className = `section ${className}`;
+            }
+        }
+
+        function safeStringify(obj) {
+            try {
+                return JSON.stringify(obj, null, 2);
+            } catch (e) {
+                return `Error: ${e.message}`;
+            }
+        }
+
+        function checkEnvironment() {
+            const env = {
+                userAgent: navigator.userAgent,
+                platform: navigator.platform,
+                language: navigator.language,
+                url: window.location.href,
+                referrer: document.referrer,
+                isTelegramApp: navigator.userAgent.includes('Telegram'),
+                hasWebAppData: window.location.href.includes('tgWebAppData'),
+                telegramReferrer: document.referrer.includes('telegram')
+            };
+
+            log('env-check', safeStringify(env));
+        }
+
+        function checkTelegramWebApp() {
+            if (typeof window.Telegram === 'undefined') {
+                log('webapp-status', 'ERROR: window.Telegram is undefined', 'error');
+                return null;
+            }
+
+            if (!window.Telegram.WebApp) {
+                log('webapp-status', 'ERROR: window.Telegram.WebApp is undefined', 'error');
+                return null;
+            }
+
+            const tg = window.Telegram.WebApp;
+
+            try {
+                tg.ready();
+                tg.expand();
+
+                const status = {
+                    available: true,
+                    platform: tg.platform,
+                    version: tg.version,
+                    colorScheme: tg.colorScheme,
+                    isExpanded: tg.isExpanded,
+                    viewportHeight: tg.viewportHeight,
+                    viewportStableHeight: tg.viewportStableHeight,
+                    headerColor: tg.headerColor,
+                    backgroundColor: tg.backgroundColor
+                };
+
+                log('webapp-status', safeStringify(status), 'success');
+                return tg;
+            } catch (error) {
+                log('webapp-status', `ERROR: ${error.message}`, 'error');
+                return null;
+            }
+        }
+
+        function checkUserData(tg) {
+            if (!tg) {
+                log('user-data', 'No Telegram WebApp available', 'error');
+                return;
+            }
+
+            if (!tg.initDataUnsafe) {
+                log('user-data', 'ERROR: initDataUnsafe is undefined', 'error');
+                return;
+            }
+
+            if (!tg.initDataUnsafe.user) {
+                log('user-data', `No user in initDataUnsafe. Available keys: ${Object.keys(tg.initDataUnsafe).join(', ')}`, 'warning');
+                return;
+            }
+
+            const user = tg.initDataUnsafe.user;
+            const userData = {
+                id: user.id,
+                is_bot: user.is_bot,
+                first_name: user.first_name,
+                last_name: user.last_name,
+                username: user.username,
+                language_code: user.language_code,
+                phone_number: user.phone_number,
+                allows_write_to_pm: user.allows_write_to_pm
+            };
+
+            log('user-data', safeStringify(userData), 'success');
+        }
+
+        function checkInitData(tg) {
+            if (!tg) {
+                log('init-data', 'No Telegram WebApp available', 'error');
+                return;
+            }
+
+            const initInfo = {
+                initData: tg.initData ? `${tg.initData.length} characters` : 'Not available',
+                initDataUnsafe: tg.initDataUnsafe ? safeStringify(tg.initDataUnsafe) : 'Not available'
+            };
+
+            log('init-data', safeStringify(initInfo), tg.initData ? 'success' : 'warning');
+        }
+
+        function checkPlatformInfo(tg) {
+            const platform = {
+                navigator: {
+                    userAgent: navigator.userAgent,
+                    platform: navigator.platform,
+                    language: navigator.language,
+                    cookieEnabled: navigator.cookieEnabled,
+                    onLine: navigator.onLine
+                },
+                telegram: tg ? {
+                    platform: tg.platform,
+                    version: tg.version,
+                    colorScheme: tg.colorScheme
+                } : 'Not available'
+            };
+
+            log('platform-info', safeStringify(platform));
+        }
+
+        function testAlert() {
+            if (window.Telegram && window.Telegram.WebApp && window.Telegram.WebApp.showAlert) {
+                window.Telegram.WebApp.showAlert('Test alert from Telegram WebApp!');
+            } else {
+                alert('Fallback alert - Telegram WebApp not available');
+            }
+        }
+
+        function testHaptic() {
+            if (window.Telegram && window.Telegram.WebApp && window.Telegram.WebApp.HapticFeedback) {
+                window.Telegram.WebApp.HapticFeedback.impactOccurred('medium');
+            } else {
+                console.log('Haptic feedback not available');
+            }
+        }
+
+        function refreshData() {
+            runDiagnostics();
+        }
+
+        function runDiagnostics() {
+            checkEnvironment();
+            const tg = checkTelegramWebApp();
+            checkUserData(tg);
+            checkInitData(tg);
+            checkPlatformInfo(tg);
+        }
+
+        // Wait a bit for Telegram to load, then run diagnostics
+        setTimeout(runDiagnostics, 500);
+    </script>
+</body>
+
+</html>
