@@ -6,10 +6,43 @@ const { simpleAuth } = require('../middleware/auth');
 // Get all bingo cards (just return all cards, filtering done client-side)
 router.get('/', async (req, res) => {
   try {
-    // Just return all cards - no database filtering
+    console.log('📊 Cards endpoint called');
+    
+    // Check if cards exist
+    const countResult = await pool.query('SELECT COUNT(*) FROM bingo_cards');
+    const cardCount = parseInt(countResult.rows[0].count);
+    
+    console.log(`📋 Found ${cardCount} cards in database`);
+    
+    if (cardCount === 0) {
+      console.log('⚠️ No cards found, generating sample cards...');
+      
+      // Generate sample cards if none exist
+      for (let i = 1; i <= 50; i++) {
+        await pool.query(
+          `INSERT INTO bingo_cards (card_number, b_column, i_column, n_column, g_column, o_column)
+           VALUES ($1, $2, $3, $4, $5, $6)
+           ON CONFLICT (card_number) DO NOTHING`,
+          [
+            i,
+            [Math.floor(Math.random() * 15) + 1, Math.floor(Math.random() * 15) + 1, Math.floor(Math.random() * 15) + 1, Math.floor(Math.random() * 15) + 1, Math.floor(Math.random() * 15) + 1],
+            [Math.floor(Math.random() * 15) + 16, Math.floor(Math.random() * 15) + 16, Math.floor(Math.random() * 15) + 16, Math.floor(Math.random() * 15) + 16, Math.floor(Math.random() * 15) + 16],
+            [Math.floor(Math.random() * 15) + 31, Math.floor(Math.random() * 15) + 31, 0, Math.floor(Math.random() * 15) + 31, Math.floor(Math.random() * 15) + 31],
+            [Math.floor(Math.random() * 15) + 46, Math.floor(Math.random() * 15) + 46, Math.floor(Math.random() * 15) + 46, Math.floor(Math.random() * 15) + 46, Math.floor(Math.random() * 15) + 46],
+            [Math.floor(Math.random() * 15) + 61, Math.floor(Math.random() * 15) + 61, Math.floor(Math.random() * 15) + 61, Math.floor(Math.random() * 15) + 61, Math.floor(Math.random() * 15) + 61]
+          ]
+        );
+      }
+      
+      console.log('✅ Sample cards generated');
+    }
+    
+    // Get cards
     const result = await pool.query(
       'SELECT * FROM bingo_cards ORDER BY card_number LIMIT 100'
     );
+    
+    console.log(`✅ Returning ${result.rows.length} cards`);
     
     // Get current round
     const roundResult = await pool.query(
@@ -20,7 +53,7 @@ router.get('/', async (req, res) => {
     
     res.json({ cards: result.rows, round: currentRound });
   } catch (error) {
-    console.error('Get cards error:', error);
+    console.error('❌ Get cards error:', error);
     res.status(500).json({ error: 'Failed to get cards', details: error.message });
   }
 });
@@ -117,6 +150,58 @@ router.post('/save-selections', simpleAuth, async (req, res) => {
     res.status(500).json({ error: 'Failed to save selections' });
   } finally {
     client.release();
+  }
+});
+
+// Test endpoint to check database status
+router.get('/test', async (req, res) => {
+  try {
+    console.log('🔍 Cards test endpoint called');
+    
+    // Check database connection
+    const testResult = await pool.query('SELECT NOW()');
+    console.log('✅ Database connection OK');
+    
+    // Check if bingo_cards table exists
+    const tableResult = await pool.query(`
+      SELECT EXISTS (
+        SELECT FROM information_schema.tables 
+        WHERE table_name = 'bingo_cards'
+      )
+    `);
+    
+    const tableExists = tableResult.rows[0].exists;
+    console.log(`📋 bingo_cards table exists: ${tableExists}`);
+    
+    if (!tableExists) {
+      return res.json({
+        status: 'error',
+        message: 'bingo_cards table does not exist',
+        suggestion: 'Run database initialization'
+      });
+    }
+    
+    // Check card count
+    const countResult = await pool.query('SELECT COUNT(*) FROM bingo_cards');
+    const cardCount = parseInt(countResult.rows[0].count);
+    
+    console.log(`📊 Cards in database: ${cardCount}`);
+    
+    res.json({
+      status: 'ok',
+      database_connected: true,
+      table_exists: tableExists,
+      card_count: cardCount,
+      timestamp: new Date().toISOString()
+    });
+    
+  } catch (error) {
+    console.error('❌ Cards test error:', error);
+    res.status(500).json({
+      status: 'error',
+      error: error.message,
+      suggestion: 'Check database connection and table structure'
+    });
   }
 });
 
