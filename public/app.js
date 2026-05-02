@@ -10,11 +10,11 @@ function waitForTelegram() {
             resolve(window.Telegram.WebApp);
             return;
         }
-        
+
         // Wait for Telegram to load
         let attempts = 0;
         const maxAttempts = 50; // 5 seconds max
-        
+
         const checkTelegram = () => {
             attempts++;
             if (window.Telegram && window.Telegram.WebApp) {
@@ -32,7 +32,7 @@ function waitForTelegram() {
                 });
             }
         };
-        
+
         setTimeout(checkTelegram, 100);
     });
 }
@@ -40,40 +40,40 @@ function waitForTelegram() {
 async function initTelegram() {
     try {
         debugLog('🔄 Waiting for Telegram WebApp...');
-        
+
         // Wait for Telegram to be available
         tg = await waitForTelegram();
-        
+
         if (tg && tg.ready) {
             debugLog('✅ Telegram WebApp found');
-            
+
             // Initialize Telegram WebApp
             tg.ready();
             tg.expand();
-            
+
             // Enable closing confirmation if available
             if (tg.enableClosingConfirmation) {
                 tg.enableClosingConfirmation();
             }
-            
+
             // Get user data with multiple attempts and better debugging
             let attempts = 0;
             const maxAttempts = 15; // Increased attempts
-            
+
             debugLog('🔍 Checking for user data...');
             debugLog('🔍 Initial initDataUnsafe: ' + JSON.stringify(tg.initDataUnsafe));
-            
+
             while (attempts < maxAttempts && (!tg.initDataUnsafe || !tg.initDataUnsafe.user)) {
                 debugLog(`🔄 Attempt ${attempts + 1}/${maxAttempts}: Waiting for user data...`);
                 await new Promise(resolve => setTimeout(resolve, 300)); // Increased wait time
                 attempts++;
-                
+
                 // Log what we have so far
                 if (tg.initDataUnsafe) {
                     debugLog('🔍 Available keys: ' + Object.keys(tg.initDataUnsafe).join(', '));
                 }
             }
-            
+
             // Get user data
             if (tg.initDataUnsafe && tg.initDataUnsafe.user) {
                 telegramUser = tg.initDataUnsafe.user;
@@ -84,7 +84,7 @@ async function initTelegram() {
                 debugLog('👤 Last name: ' + (telegramUser.last_name || 'Not set'));
                 debugLog('📞 Phone: ' + (telegramUser.phone_number || 'Not provided'));
                 debugLog('🌐 Language: ' + (telegramUser.language_code || 'Not set'));
-                
+
                 // Validate init data
                 if (tg.initData) {
                     debugLog('✅ Init data available: ' + tg.initData.length + ' chars');
@@ -94,7 +94,7 @@ async function initTelegram() {
             } else {
                 debugLog('⚠️ No user data in initDataUnsafe after ' + attempts + ' attempts');
                 debugLog('🔍 Final initDataUnsafe state: ' + JSON.stringify(tg.initDataUnsafe));
-                
+
                 // Try alternative methods to get user data
                 if (tg.WebAppUser) {
                     telegramUser = tg.WebAppUser;
@@ -103,23 +103,23 @@ async function initTelegram() {
                     debugLog('🔍 InitDataUnsafe has data but no user: ' + JSON.stringify(tg.initDataUnsafe));
                 }
             }
-            
+
             // Set theme if available
             if (tg.themeParams) {
                 document.documentElement.style.setProperty('--tg-theme-bg-color', tg.themeParams.bg_color || '#ffffff');
                 document.documentElement.style.setProperty('--tg-theme-text-color', tg.themeParams.text_color || '#000000');
             }
-            
+
         } else {
             debugLog('❌ Telegram WebApp not available - using fallback');
         }
-        
+
         isInitialized = true;
-        
+
     } catch (error) {
         debugLog('❌ Telegram init error: ' + error.message);
         isInitialized = true;
-        
+
         // Create fallback tg object
         tg = {
             initDataUnsafe: {},
@@ -141,17 +141,17 @@ let socketReady = false;
 function initSocket() {
     try {
         if (typeof io !== 'undefined') {
-            socket = io(window.location.origin, { 
+            socket = io(window.location.origin, {
                 transports: ['websocket', 'polling'],
                 timeout: 5000,
                 forceNew: true
             });
-            
+
             socket.on('connect', () => {
                 socketReady = true;
                 console.log('🔌 Socket connected');
             });
-            
+
             socket.on('connect_error', (error) => {
                 console.error('Socket error:', error);
                 socketReady = false;
@@ -162,13 +162,13 @@ function initSocket() {
     } catch (e) {
         console.error('Socket.IO initialization error:', e);
     }
-    
+
     // Create fallback socket object
     if (!socket) {
-        socket = { 
-            on: () => {}, 
+        socket = {
+            on: () => {},
             emit: () => {},
-            connected: false 
+            connected: false
         };
     }
 }
@@ -207,7 +207,7 @@ function forceShowInterface() {
             loading.style.display = 'none';
             loading.classList.remove('active');
         }
-        
+
         // Show game screen
         const gameScreen = document.getElementById('game-screen');
         if (gameScreen) {
@@ -228,26 +228,25 @@ if (document.readyState === 'loading') {
 } else {
     forceShowInterface();
 }
-let takenCards = {}; // Track cards taken by others: { cardId: userId }
 
 // Initialize app
 async function init() {
     debugLog('🚀 Init started');
-    
+
     // Wait for Telegram to be initialized
     if (!isInitialized) {
         debugLog('⏳ Waiting for Telegram initialization...');
         await initTelegram();
     }
-    
+
     // Initialize Socket.IO
     initSocket();
-    
+
     // Get user data from multiple sources with better debugging
     let user = null;
-    
+
     debugLog('🔍 Checking user data sources...');
-    
+
     // Method 1: Try Telegram WebApp user data (best method)
     if (telegramUser) {
         user = telegramUser;
@@ -257,7 +256,7 @@ async function init() {
             first_name: user.first_name,
             last_name: user.last_name
         }));
-    } 
+    }
     // Method 2: Try URL parameters (fallback for inline buttons)
     else {
         debugLog('⚠️ No Telegram user data, checking URL parameters...');
@@ -266,7 +265,7 @@ async function init() {
         const urlUsername = urlParams.get('username');
         const urlFirstName = urlParams.get('first_name');
         const urlLastName = urlParams.get('last_name');
-        
+
         debugLog('🔗 URL params: ' + JSON.stringify({
             user_id: urlUserId,
             username: urlUsername,
@@ -274,7 +273,7 @@ async function init() {
             last_name: urlLastName,
             source: urlParams.get('source')
         }));
-        
+
         if (urlUserId) {
             user = {
                 id: parseInt(urlUserId),
@@ -285,9 +284,24 @@ async function init() {
                 language_code: 'en'
             };
             debugLog('✅ Using URL parameters user: ' + JSON.stringify(user));
+        } else {
+            // Method 3: Try to extract from Telegram init data string
+            debugLog('⚠️ No URL params, trying to parse init data...');
+            if (tg && tg.initData) {
+                try {
+                    const params = new URLSearchParams(tg.initData);
+                    const userJson = params.get('user');
+                    if (userJson) {
+                        user = JSON.parse(userJson);
+                        debugLog('✅ Extracted user from init data: ' + JSON.stringify(user));
+                    }
+                } catch (parseError) {
+                    debugLog('❌ Failed to parse init data: ' + parseError.message);
+                }
+            }
         }
     }
-    
+
     if (user) {
         currentUser = {
             id: user.id,
@@ -298,7 +312,7 @@ async function init() {
             phone_number: user.phone_number || null,
             language_code: user.language_code || 'en'
         };
-        
+
         // Display all available user info
         debugLog('📋 Final user object:');
         debugLog('  - ID: ' + currentUser.telegram_id);
@@ -307,19 +321,19 @@ async function init() {
         debugLog('  - Last name: ' + (currentUser.last_name || 'Not set'));
         debugLog('  - Phone: ' + (currentUser.phone_number || 'Not provided'));
         debugLog('  - Language: ' + currentUser.language_code);
-        
+
     } else {
         debugLog('⚠️ No user data available from any source, trying server fallback...');
-        
+
         // Try to get user data from server based on Telegram environment
         try {
             const response = await fetch('/api/user/current', {
                 headers: {
-                    'X-Telegram-Init-Data': tg?.initData || '',
+                    'X-Telegram-Init-Data': (tg && tg.initData) || '',
                     'X-User-Agent': navigator.userAgent
                 }
             });
-            
+
             if (response.ok) {
                 const serverUser = await response.json();
                 if (serverUser && serverUser.user) {
@@ -341,23 +355,23 @@ async function init() {
             }
         } catch (serverError) {
             debugLog('⚠️ Server fallback failed: ' + serverError.message);
-            
+
             // Try to detect if we're in Telegram environment
             const userAgent = navigator.userAgent;
-            const isTelegramApp = userAgent.includes('Telegram') || 
-                                 window.location.href.includes('tgWebAppData') ||
-                                 document.referrer.includes('telegram');
-            
+            const isTelegramApp = userAgent.includes('Telegram') ||
+                window.location.href.includes('tgWebAppData') ||
+                document.referrer.includes('telegram');
+
             debugLog('🔍 Environment check:');
             debugLog('  - User Agent: ' + userAgent);
             debugLog('  - URL: ' + window.location.href);
             debugLog('  - Referrer: ' + document.referrer);
             debugLog('  - Is Telegram App: ' + isTelegramApp);
-            
+
             if (isTelegramApp) {
                 debugLog('🔍 Detected Telegram environment but no user data');
                 debugLog('🔍 This might be a Telegram WebApp configuration issue');
-                
+
                 // Create a more descriptive guest user for Telegram environment
                 currentUser = {
                     id: Date.now(),
@@ -380,32 +394,32 @@ async function init() {
                     language_code: 'en'
                 };
             }
-            
+
             debugLog('📋 Created fallback user: ' + JSON.stringify(currentUser));
         }
     }
-    
+
     // Update UI immediately with all available info
     debugLog('🎨 Updating UI with user: ' + JSON.stringify({
         first_name: currentUser.first_name,
         username: currentUser.username
     }));
-    
+
     // Force update the UI multiple times to ensure it sticks
     updateUI(currentUser, { balance: 0, profit: 0 });
-    
+
     // Also update after a short delay to handle any timing issues
     setTimeout(() => {
         debugLog('🔄 Secondary UI update...');
         updateUI(currentUser, { balance: 0, profit: 0 });
     }, 500);
-    
+
     // And one more time after 2 seconds
     setTimeout(() => {
         debugLog('🔄 Final UI update...');
         updateUI(currentUser, { balance: 0, profit: 0 });
     }, 2000);
-    
+
     // Load data in background (don't wait)
     debugLog('📊 Loading data in background...');
     loadGameData().catch(err => {
@@ -413,12 +427,12 @@ async function init() {
         // Generate sample cards as fallback
         generateSampleCards();
     });
-    
+
     // Register user in background (don't wait)
     registerUser(currentUser).catch(err => {
         debugLog('❌ Register error: ' + err.message);
     });
-    
+
     debugLog('✅ Init completed');
 }
 
@@ -444,140 +458,79 @@ function generateSampleCards() {
 // Register user in database (background task)
 async function registerUser(user) {
     try {
+        debugLog('📝 Registering user: ' + JSON.stringify(user));
+
+        // Prepare user data for API
+        const userData = { user };
+
+        // Add Telegram init data if available
+        if (tg && tg.initData) {
+            userData.initData = tg.initData;
+        }
+
         const response = await fetch(`${API_URL}/auth/login`, {
             method: 'POST',
             headers: {
                 'Content-Type': 'application/json',
-                'X-Telegram-User-Id': user.telegram_id
+                'X-Telegram-User-Id': user.telegram_id,
+                'X-Telegram-Init-Data': (tg && tg.initData) || ''
             },
-            body: JSON.stringify({ user })
+            body: JSON.stringify(userData)
         });
-        
+
         if (response.ok) {
             const data = await response.json();
-            if (data.balance) {
-                updateUI(user, data.balance);
+            debugLog('✅ Registration successful: ' + JSON.stringify(data));
+
+            if (data.user && data.balance) {
+                // Update current user with server data
+                currentUser = {
+                    ...currentUser,
+                    ...data.user
+                };
+
+                // Force UI update with complete user data
+                updateUI(currentUser, data.balance);
+                debugLog('✅ UI updated with server user data');
             }
-            console.log('✅ User registered');
+        } else {
+            const errorText = await response.text();
+            debugLog('❌ Registration failed: ' + errorText);
         }
     } catch (error) {
-        console.error('Register error:', error);
+        debugLog('❌ Register error: ' + error.message);
     }
 }
 
-// Update UI with user data
-function updateUI(user, balance) {
-    debugLog('🎨 updateUI called with user: ' + JSON.stringify({
-        first_name: user.first_name,
-        username: user.username,
-        id: user.id || user.telegram_id
-    }));
-    
-    // Display name (prefer first_name, fallback to username, then Guest)
-    let displayName = user.first_name || user.username || 'Guest User';
-    
-    // If we have both first_name and username, show both
-    if (user.first_name && user.username) {
-        displayName = `${user.first_name} (@${user.username})`;
-    } else if (user.username && !user.first_name) {
-        displayName = `@${user.username}`;
-    }
-    
-    debugLog('🏷️ Final display name: ' + displayName);
-    
-    // Update the username element
-    const usernameElement = document.getElementById('username');
-    if (usernameElement) {
-        usernameElement.textContent = displayName;
-        debugLog('✅ Username element updated to: ' + displayName);
-    } else {
-        debugLog('❌ Username element not found!');
-    }
-    
-    // Update balance info
-    const balanceElement = document.getElementById('balance');
-    const profitElement = document.getElementById('profit');
-    
-    if (balanceElement) {
-        balanceElement.textContent = balance.balance || 0;
-    }
-    if (profitElement) {
-        profitElement.textContent = balance.profit || 0;
-    }
-    
-    // Add user info to debug log
-    debugLog('👤 Display name: ' + displayName);
-    debugLog('👤 First name: ' + (user.first_name || 'Not set'));
-    debugLog('👤 Username: ' + (user.username || 'Not set'));
-    if (user.phone_number) {
-        debugLog('📞 Phone: ' + user.phone_number);
-    }
-}
-
-// Load game data
-async function loadGameData() {
-    console.log('📊 Loading game data...');
-    try {
-        await Promise.all([
-            loadRound(),
-            loadCards(),
-            loadHistory(),
-            loadStats()
-        ]);
-        console.log('✅ Game data loaded');
-    } catch (error) {
-        console.error('❌ Failed to load game data:', error);
-    }
-}
-
-// Load current round
-async function loadRound() {
-    try {
-        const response = await fetch(`${API_URL}/game/round`, {
-            headers: {
-                'X-Telegram-User-Id': currentUser?.telegram_id || 1
-            }
-        });
-        const data = await response.json();
-        currentRound = data.round.round_number;
-        document.getElementById('round-number').textContent = currentRound;
-        console.log('✅ Round loaded:', currentRound);
-    } catch (error) {
-        console.error('Load round error:', error);
-        currentRound = 1;
-        document.getElementById('round-number').textContent = '1';
-    }
-}
-
-// Load available cards
+// Load cards from server
 async function loadCards() {
     try {
-        debugLog('📊 Loading cards from server...');
+        debugLog('� Loading cards from server...');
         const response = await fetch(`${API_URL}/cards`, {
             headers: {
-                'X-Telegram-User-Id': tg.initDataUnsafe.user?.id || currentUser?.telegram_id || 1
+                'X-Telegram-User-Id': (tg && tg.initDataUnsafe && tg.initDataUnsafe.user && tg.initDataUnsafe.user.id) || (currentUser && currentUser.telegram_id) || 1
             }
         });
-        
+
         if (!response.ok) {
             throw new Error(`HTTP ${response.status}`);
         }
-        
+
         const data = await response.json();
         allCards = data.cards; // Store globally
-        
+
         // Also load user's selected cards
         await loadMyCards();
-        
+
         displayCards(data.cards);
         debugLog('✅ Cards loaded from server');
     } catch (error) {
         debugLog('❌ Server cards failed: ' + error.message);
         console.error('Load cards error:', error);
-        
+
         // Use sample cards as fallback
         generateSampleCards();
-        
+
         const container = document.getElementById('cards-grid');
         if (container && allCards.length === 0) {
             container.innerHTML = `<p class="error">Using sample cards. <button onclick="loadCards()" class="btn btn-secondary">Retry Server</button></p>`;
@@ -590,17 +543,17 @@ async function loadMyCards() {
     try {
         const response = await fetch(`${API_URL}/cards/my-cards`, {
             headers: {
-                'X-Telegram-User-Id': tg.initDataUnsafe.user?.id || 1
+                'X-Telegram-User-Id': (tg && tg.initDataUnsafe && tg.initDataUnsafe.user && tg.initDataUnsafe.user.id) || 1
             }
         });
         const data = await response.json();
-        
+
         // Update selected cards array
         selectedCards = data.cards.map(card => ({
             id: card.id,
             number: card.card_number
         }));
-        
+
         updateSelectedCards();
         updateStartButton();
     } catch (error) {
@@ -608,47 +561,15 @@ async function loadMyCards() {
     }
 }
 
-// Display cards in compact grid
-function displayCards(cards) {
-    const container = document.getElementById('cards-grid');
-    
-    if (cards.length === 0) {
-        container.innerHTML = '<p class="empty-state">No cards available</p>';
-        return;
-    }
-
-    const myUserId = currentUser?.telegram_id || tg.initDataUnsafe.user?.id;
-
-    container.innerHTML = cards.map(card => {
-        const isSelectedByMe = selectedCards.some(c => c.id === card.id);
-        const isTakenByOther = takenCards[card.id] && takenCards[card.id] !== myUserId;
-        
-        let className = 'card-btn-compact';
-        if (isSelectedByMe) {
-            className += ' selected'; // Green - my card
-        } else if (isTakenByOther) {
-            className += ' taken'; // Gray - taken by someone else
-        }
-        
-        return `
-            <button class="${className}" 
-                    data-card-id="${card.id}" 
-                    onclick="toggleCardSelection(${card.id}, ${card.card_number})"
-                    ${isTakenByOther ? 'disabled' : ''}>
-                ${card.card_number}
-            </button>
-        `;
-    }).join('');
-}
-
 // Toggle card selection (real-time via WebSocket, no database)
 function toggleCardSelection(cardId, cardNumber) {
-    const myUserId = currentUser?.telegram_id || tg.initDataUnsafe.user?.id;
-    
+    const myUserId = (currentUser && currentUser.telegram_id) || (tg && tg.initDataUnsafe && tg.initDataUnsafe.user && tg.initDataUnsafe.user.id);
+
     // Check if card is taken by someone else
     if (takenCards[cardId] && takenCards[cardId] !== myUserId) {
         const alertMsg = `Card #${cardNumber} is already selected by another player`;
-        
+
+        // ...
         // Use version-compatible alert
         if (tg && tg.showAlert && typeof tg.showAlert === 'function') {
             try {
@@ -661,16 +582,16 @@ function toggleCardSelection(cardId, cardNumber) {
         }
         return;
     }
-    
+
     const cardIndex = selectedCards.findIndex(c => c.id === cardId);
-    
+
     if (cardIndex > -1) {
         // Deselect this specific card
         selectedCards.splice(cardIndex, 1);
-        
+
         // Remove from taken cards
         delete takenCards[cardId];
-        
+
         // Emit to server (real-time) - only if socket is ready
         if (socketReady && socket) {
             socket.emit('deselect-card', {
@@ -680,15 +601,15 @@ function toggleCardSelection(cardId, cardNumber) {
                 userId: myUserId
             });
         }
-        
+
         debugLog(`➖ Deselected card #${cardNumber}`);
     } else {
         // Select card
         selectedCards.push({ id: cardId, number: cardNumber });
-        
+
         // Mark as taken by me
         takenCards[cardId] = myUserId;
-        
+
         // Emit to server (real-time) - only if socket is ready
         if (socketReady && socket) {
             socket.emit('select-card', {
@@ -698,10 +619,10 @@ function toggleCardSelection(cardId, cardNumber) {
                 userId: myUserId
             });
         }
-        
+
         debugLog(`➕ Selected card #${cardNumber}`);
     }
-    
+
     updateSelectedCards();
     updateStartButton();
     displayCards(allCards);
@@ -714,7 +635,7 @@ function viewCard(cardId) {
         console.error('Card not found:', cardId);
         return;
     }
-    
+
     const modalHtml = `
         <div class="modal" id="card-modal" onclick="closeModal()">
             <div class="modal-content" onclick="event.stopPropagation()">
@@ -743,7 +664,7 @@ function viewCard(cardId) {
             </div>
         </div>
     `;
-    
+
     document.body.insertAdjacentHTML('beforeend', modalHtml);
 }
 
@@ -781,7 +702,7 @@ function selectCardFromModal(cardId, cardNumber) {
 // Select card
 function selectCard(cardId, cardNumber) {
     const cardIndex = selectedCards.findIndex(c => c.id === cardId);
-    
+
     if (cardIndex > -1) {
         // Remove card
         selectedCards.splice(cardIndex, 1);
@@ -789,7 +710,7 @@ function selectCard(cardId, cardNumber) {
         // Add card
         selectedCards.push({ id: cardId, number: cardNumber });
     }
-    
+
     updateSelectedCards();
     updateStartButton();
 }
@@ -797,7 +718,7 @@ function selectCard(cardId, cardNumber) {
 // Update selected cards display
 function updateSelectedCards() {
     const container = document.getElementById('selected-cards');
-    
+
     if (selectedCards.length === 0) {
         container.innerHTML = '<p class="empty-state">No cards selected. Tap card numbers above to select.</p>';
         return;
@@ -843,7 +764,7 @@ async function loadHistory() {
 // Display history
 function displayHistory(history) {
     const container = document.getElementById('history-list');
-    
+
     if (history.length === 0) {
         container.innerHTML = '<p class="empty-state">No games played yet</p>';
         return;
@@ -920,10 +841,10 @@ function showScreen(screenId) {
 document.querySelectorAll('.tab').forEach(tab => {
     tab.addEventListener('click', () => {
         const tabName = tab.dataset.tab;
-        
+
         document.querySelectorAll('.tab').forEach(t => t.classList.remove('active'));
         document.querySelectorAll('.tab-content').forEach(c => c.classList.remove('active'));
-        
+
         tab.classList.add('active');
         document.getElementById(`${tabName}-tab`).classList.add('active');
     });
@@ -955,13 +876,13 @@ document.addEventListener('DOMContentLoaded', () => {
 
 // Initialize on load - wait for DOM and Telegram
 if (document.readyState === 'loading') {
-    document.addEventListener('DOMContentLoaded', async () => {
+    document.addEventListener('DOMContentLoaded', async() => {
         await initTelegram();
         await init();
     });
 } else {
     // DOM already loaded
-    (async () => {
+    (async() => {
         await initTelegram();
         await init();
     })();
@@ -971,15 +892,15 @@ if (document.readyState === 'loading') {
 // Socket.IO real-time events
 function setupSocketEvents() {
     if (!socket) return;
-    
+
     socket.on('connect', () => {
         socketReady = true;
         debugLog('🔌 Connected to server');
         // Join current round room with user ID
         if (currentUser) {
-            socket.emit('join-round', { 
-                roundNumber: currentRound, 
-                userId: currentUser.telegram_id 
+            socket.emit('join-round', {
+                roundNumber: currentRound,
+                userId: currentUser.telegram_id
             });
         }
     });
@@ -999,17 +920,17 @@ function setupSocketEvents() {
     // Receive current card selections when joining
     socket.on('current-selections', (selections) => {
         console.log('Current selections:', selections);
-        const myUserId = currentUser?.telegram_id || tg.initDataUnsafe.user?.id;
-        
+        const myUserId = (currentUser && currentUser.telegram_id) || (tg && tg.initDataUnsafe && tg.initDataUnsafe.user && tg.initDataUnsafe.user.id);
+
         // Clear and rebuild taken cards
         takenCards = {};
         selectedCards = [];
-        
+
         // Process all selections
         Object.keys(selections).forEach(cardId => {
             const userId = selections[cardId];
             takenCards[parseInt(cardId)] = userId;
-            
+
             // If it's my card, add to selected cards
             if (userId === myUserId) {
                 const card = allCards.find(c => c.id === parseInt(cardId));
@@ -1018,7 +939,7 @@ function setupSocketEvents() {
                 }
             }
         });
-        
+
         displayCards(allCards);
         updateSelectedCards();
         updateStartButton();
@@ -1027,12 +948,12 @@ function setupSocketEvents() {
     // Real-time: Card selected by any user
     socket.on('card-selected', (data) => {
         console.log('Card selected:', data);
-        
+
         // Mark card as taken
         takenCards[data.cardId] = data.userId;
-        
+
         // If it's my card, add to selected
-        const myUserId = currentUser?.telegram_id || tg.initDataUnsafe.user?.id;
+        const myUserId = (currentUser && currentUser.telegram_id) || (tg && tg.initDataUnsafe && tg.initDataUnsafe.user && tg.initDataUnsafe.user.id);
         if (data.userId === myUserId) {
             if (!selectedCards.some(c => c.id === data.cardId)) {
                 selectedCards.push({ id: data.cardId, number: data.cardNumber });
@@ -1040,7 +961,7 @@ function setupSocketEvents() {
                 updateStartButton();
             }
         }
-        
+
         // Refresh display to show taken card
         displayCards(allCards);
     });
@@ -1048,18 +969,18 @@ function setupSocketEvents() {
     // Real-time: Card deselected by any user
     socket.on('card-deselected', (data) => {
         console.log('Card released:', data);
-        
+
         // Remove from taken cards
         delete takenCards[data.cardId];
-        
+
         // If it was my card, remove from selected
-        const myUserId = currentUser?.telegram_id || tg.initDataUnsafe.user?.id;
+        const myUserId = (currentUser && currentUser.telegram_id) || (tg && tg.initDataUnsafe && tg.initDataUnsafe.user && tg.initDataUnsafe.user.id);
         if (data.userId === myUserId) {
             selectedCards = selectedCards.filter(c => c.id !== data.cardId);
             updateSelectedCards();
             updateStartButton();
         }
-        
+
         // Refresh display to show available card
         displayCards(allCards);
     });

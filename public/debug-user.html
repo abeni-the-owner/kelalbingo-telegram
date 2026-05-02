@@ -1,0 +1,338 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>User Data Debug - KELALBINGO</title>
+    <script src="https://telegram.org/js/telegram-web-app.js"></script>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            margin: 20px;
+            background: #f5f5f5;
+        }
+        .container {
+            max-width: 800px;
+            margin: 0 auto;
+            background: white;
+            padding: 20px;
+            border-radius: 10px;
+            box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+        }
+        .section {
+            margin: 20px 0;
+            padding: 15px;
+            border: 1px solid #ddd;
+            border-radius: 5px;
+        }
+        .success { border-color: #4CAF50; background: #f1f8e9; }
+        .error { border-color: #f44336; background: #ffebee; }
+        .warning { border-color: #ff9800; background: #fff3e0; }
+        pre {
+            background: #f8f9fa;
+            padding: 10px;
+            border-radius: 3px;
+            overflow-x: auto;
+            font-size: 12px;
+        }
+        .btn {
+            background: #2196F3;
+            color: white;
+            padding: 10px 20px;
+            border: none;
+            border-radius: 5px;
+            cursor: pointer;
+            margin: 5px;
+        }
+        .btn:hover { background: #1976D2; }
+        .status {
+            padding: 10px;
+            border-radius: 5px;
+            margin: 10px 0;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>🔍 User Data Debug - KELALBINGO</h1>
+        
+        <div class="section">
+            <h2>📱 Telegram Web App Status</h2>
+            <div id="telegram-status" class="status">Checking...</div>
+        </div>
+
+        <div class="section">
+            <h2>👤 User Data Sources</h2>
+            <div id="user-sources"></div>
+        </div>
+
+        <div class="section">
+            <h2>🔗 URL Parameters</h2>
+            <div id="url-params"></div>
+        </div>
+
+        <div class="section">
+            <h2>🔐 Init Data</h2>
+            <div id="init-data"></div>
+        </div>
+
+        <div class="section">
+            <h2>🌐 Environment Info</h2>
+            <div id="environment"></div>
+        </div>
+
+        <div class="section">
+            <h2>🧪 API Test</h2>
+            <button class="btn" onclick="testAPI()">Test Auth API</button>
+            <div id="api-result"></div>
+        </div>
+
+        <div class="section">
+            <h2>📝 Debug Log</h2>
+            <div id="debug-log"></div>
+        </div>
+    </div>
+
+    <script>
+        let tg = null;
+        let debugLog = [];
+
+        function log(message, type = 'info') {
+            const timestamp = new Date().toISOString();
+            const entry = `[${timestamp}] ${message}`;
+            debugLog.push(entry);
+            
+            const logDiv = document.getElementById('debug-log');
+            if (logDiv) {
+                logDiv.innerHTML += `<div class="${type}">${entry}</div>`;
+                logDiv.scrollTop = logDiv.scrollHeight;
+            }
+            console.log(entry);
+        }
+
+        function updateStatus(elementId, message, type = 'info') {
+            const element = document.getElementById(elementId);
+            if (element) {
+                element.className = `status ${type}`;
+                element.textContent = message;
+            }
+        }
+
+        function formatJSON(obj) {
+            return JSON.stringify(obj, null, 2);
+        }
+
+        function analyzeUserData() {
+            log('🔍 Starting user data analysis...');
+
+            // Check Telegram Web App
+            if (window.Telegram && window.Telegram.WebApp) {
+                tg = window.Telegram.WebApp;
+                tg.ready();
+                updateStatus('telegram-status', '✅ Telegram WebApp available', 'success');
+                log('✅ Telegram WebApp found');
+                
+                // Analyze user data
+                const sources = [];
+                
+                // Method 1: initDataUnsafe.user
+                if (tg.initDataUnsafe && tg.initDataUnsafe.user) {
+                    sources.push({
+                        method: 'initDataUnsafe.user',
+                        data: tg.initDataUnsafe.user,
+                        status: 'success'
+                    });
+                    log('✅ Found user in initDataUnsafe.user');
+                } else {
+                    sources.push({
+                        method: 'initDataUnsafe.user',
+                        data: null,
+                        status: 'error',
+                        error: 'No user data found'
+                    });
+                    log('❌ No user data in initDataUnsafe.user');
+                }
+
+                // Method 2: URL parameters
+                const urlParams = new URLSearchParams(window.location.search);
+                const urlUser = {
+                    user_id: urlParams.get('user_id'),
+                    username: urlParams.get('username'),
+                    first_name: urlParams.get('first_name'),
+                    last_name: urlParams.get('last_name')
+                };
+                
+                if (urlUser.user_id) {
+                    sources.push({
+                        method: 'URL Parameters',
+                        data: urlUser,
+                        status: 'success'
+                    });
+                    log('✅ Found user in URL parameters');
+                } else {
+                    sources.push({
+                        method: 'URL Parameters',
+                        data: urlUser,
+                        status: 'warning',
+                        error: 'No URL parameters found'
+                    });
+                    log('⚠️ No user data in URL parameters');
+                }
+
+                // Method 3: Parse init data string
+                let initUser = null;
+                if (tg.initData) {
+                    try {
+                        const params = new URLSearchParams(tg.initData);
+                        const userJson = params.get('user');
+                        if (userJson) {
+                            initUser = JSON.parse(userJson);
+                            sources.push({
+                                method: 'Parsed init data',
+                                data: initUser,
+                                status: 'success'
+                            });
+                            log('✅ Found user in parsed init data');
+                        } else {
+                            sources.push({
+                                method: 'Parsed init data',
+                                data: null,
+                                status: 'error',
+                                error: 'No user field in init data'
+                            });
+                            log('❌ No user field in init data');
+                        }
+                    } catch (error) {
+                        sources.push({
+                            method: 'Parsed init data',
+                            data: null,
+                            status: 'error',
+                            error: error.message
+                        });
+                        log('❌ Failed to parse init data: ' + error.message);
+                    }
+                }
+
+                // Display sources
+                const sourcesDiv = document.getElementById('user-sources');
+                sourcesDiv.innerHTML = sources.map(source => `
+                    <div class="section ${source.status}">
+                        <h3>${source.method}</h3>
+                        <div class="status ${source.status}">
+                            ${source.status === 'success' ? '✅ Success' : source.status === 'warning' ? '⚠️ Warning' : '❌ Error'}
+                            ${source.error ? ': ' + source.error : ''}
+                        </div>
+                        ${source.data ? '<pre>' + formatJSON(source.data) + '</pre>' : ''}
+                    </div>
+                `).join('');
+
+                // Display URL parameters
+                const urlDiv = document.getElementById('url-params');
+                const allParams = {};
+                for (const [key, value] of urlParams) {
+                    allParams[key] = value;
+                }
+                urlDiv.innerHTML = '<pre>' + formatJSON(allParams) + '</pre>';
+
+                // Display init data
+                const initDiv = document.getElementById('init-data');
+                initDiv.innerHTML = `
+                    <div><strong>Init Data Available:</strong> ${tg.initData ? 'Yes (' + tg.initData.length + ' chars)' : 'No'}</div>
+                    <div><strong>Init Data Unsafe:</strong></div>
+                    <pre>${formatJSON(tg.initDataUnsafe || {})}</pre>
+                    ${tg.initData ? `<div><strong>Raw Init Data:</strong></div><pre>${tg.initData}</pre>` : ''}
+                `;
+
+            } else {
+                updateStatus('telegram-status', '❌ Telegram WebApp not available', 'error');
+                log('❌ Telegram WebApp not available');
+                
+                // Still check URL parameters
+                const urlParams = new URLSearchParams(window.location.search);
+                const urlDiv = document.getElementById('url-params');
+                const allParams = {};
+                for (const [key, value] of urlParams) {
+                    allParams[key] = value;
+                }
+                urlDiv.innerHTML = '<pre>' + formatJSON(allParams) + '</pre>';
+            }
+
+            // Environment info
+            const envDiv = document.getElementById('environment');
+            envDiv.innerHTML = `
+                <div><strong>User Agent:</strong> ${navigator.userAgent}</div>
+                <div><strong>URL:</strong> ${window.location.href}</div>
+                <div><strong>Referrer:</strong> ${document.referrer}</div>
+                <div><strong>Is Telegram App:</strong> ${navigator.userAgent.includes('Telegram') || window.location.href.includes('tgWebAppData') || document.referrer.includes('telegram')}</div>
+            `;
+        }
+
+        async function testAPI() {
+            log('🧪 Testing API...');
+            const resultDiv = document.getElementById('api-result');
+            
+            try {
+                // Try to get user data from best available source
+                let userData = null;
+                
+                if (tg && tg.initDataUnsafe && tg.initDataUnsafe.user) {
+                    userData = tg.initDataUnsafe.user;
+                } else {
+                    const urlParams = new URLSearchParams(window.location.search);
+                    const urlUserId = urlParams.get('user_id');
+                    if (urlUserId) {
+                        userData = {
+                            id: parseInt(urlUserId),
+                            username: urlParams.get('username'),
+                            first_name: urlParams.get('first_name'),
+                            last_name: urlParams.get('last_name')
+                        };
+                    }
+                }
+                
+                if (!userData) {
+                    throw new Error('No user data available for API test');
+                }
+                
+                const response = await fetch('/api/auth/login', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'X-Telegram-User-Id': userData.id,
+                        'X-Telegram-Init-Data': tg?.initData || ''
+                    },
+                    body: JSON.stringify({ user: userData, initData: tg?.initData })
+                });
+                
+                const result = await response.json();
+                
+                resultDiv.innerHTML = `
+                    <div class="status ${response.ok ? 'success' : 'error'}">
+                        ${response.ok ? '✅ API Success' : '❌ API Error'} (${response.status})
+                    </div>
+                    <pre>${formatJSON(result)}</pre>
+                `;
+                
+                log(`✅ API test completed: ${response.ok ? 'Success' : 'Failed'}`);
+                
+            } catch (error) {
+                resultDiv.innerHTML = `
+                    <div class="status error">❌ API Test Failed</div>
+                    <div>${error.message}</div>
+                `;
+                log('❌ API test failed: ' + error.message);
+            }
+        }
+
+        // Initialize when page loads
+        if (document.readyState === 'loading') {
+            document.addEventListener('DOMContentLoaded', analyzeUserData);
+        } else {
+            analyzeUserData();
+        }
+
+        // Also wait a bit for Telegram to load
+        setTimeout(analyzeUserData, 2000);
+    </script>
+</body>
+</html>
