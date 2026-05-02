@@ -218,13 +218,36 @@ async function init() {
     // Initialize Socket.IO
     initSocket();
     
-    // Get user data from Telegram
+    // Get user data from multiple sources
     let user = null;
     
+    // Method 1: Try Telegram WebApp user data (best method)
     if (telegramUser) {
         user = telegramUser;
-        debugLog('✅ Using Telegram user: ' + (user.username || user.first_name));
+        debugLog('✅ Using Telegram WebApp user: ' + (user.username || user.first_name));
+    } 
+    // Method 2: Try URL parameters (fallback for inline buttons)
+    else {
+        const urlParams = new URLSearchParams(window.location.search);
+        const urlUserId = urlParams.get('user_id');
+        const urlUsername = urlParams.get('username');
+        const urlFirstName = urlParams.get('first_name');
         
+        if (urlUserId) {
+            user = {
+                id: parseInt(urlUserId),
+                username: urlUsername || null,
+                first_name: urlFirstName || null,
+                last_name: null,
+                phone_number: null,
+                language_code: 'en'
+            };
+            debugLog('✅ Using URL parameters user: ' + (user.username || user.first_name));
+            debugLog('🔗 Source: ' + urlParams.get('source'));
+        }
+    }
+    
+    if (user) {
         currentUser = {
             id: user.id,
             telegram_id: user.id,
@@ -245,7 +268,7 @@ async function init() {
         debugLog('  - Language: ' + currentUser.language_code);
         
     } else {
-        debugLog('⚠️ No Telegram user, creating guest user');
+        debugLog('⚠️ No user data available, creating guest user');
         
         // Try to detect if we're in Telegram environment
         const userAgent = navigator.userAgent;

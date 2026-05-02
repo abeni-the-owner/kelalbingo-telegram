@@ -6,6 +6,7 @@ async function setupMenuButton() {
     try {
         const webAppUrl = process.env.WEB_APP_URL || 'https://kelalbingo-telegram.onrender.com';
         
+        // Set the menu button (this is the main way to get user data)
         await bot.setChatMenuButton({
             menu_button: {
                 type: 'web_app',
@@ -17,6 +18,18 @@ async function setupMenuButton() {
         });
         
         console.log('✅ Menu button set successfully:', webAppUrl);
+        
+        // Also set bot commands for better UX
+        await bot.setMyCommands([
+            { command: 'start', description: '🎮 Start the bot and play bingo' },
+            { command: 'test', description: '🔧 Test bot connection' },
+            { command: 'contact', description: '📱 Share your contact info' },
+            { command: 'balance', description: '💰 Check your balance' },
+            { command: 'menu', description: '🔍 Check menu button status' }
+        ]);
+        
+        console.log('✅ Bot commands set successfully');
+        
     } catch (err) {
         console.error('❌ Error setting menu button:', err.message);
     }
@@ -59,8 +72,10 @@ Play bingo, win prizes, and have fun!
       inline_keyboard: [
         [
           {
-            text: '🎲 Play Bingo (Inline)',
-            web_app: { url: webAppUrl }
+            text: '🎲 Play Bingo',
+            web_app: { 
+              url: webAppUrl + '?source=inline&user_id=' + userId + '&username=' + encodeURIComponent(username) + '&first_name=' + encodeURIComponent(msg.from.first_name || '')
+            }
           }
         ],
         [
