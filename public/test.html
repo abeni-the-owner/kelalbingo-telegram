@@ -64,22 +64,39 @@
 
         const selectedCards = [];
 
-        // Try to get Telegram user
+        // Try to get Telegram user with detailed logging
         try {
             if (window.Telegram && window.Telegram.WebApp) {
                 const tg = window.Telegram.WebApp;
                 tg.expand();
                 tg.ready();
 
+                console.log('Telegram WebApp object:', tg);
+                console.log('Init data unsafe:', tg.initDataUnsafe);
+                console.log('Init data:', tg.initData);
+
                 const user = tg.initDataUnsafe && tg.initDataUnsafe.user;
                 if (user) {
-                    document.getElementById('user').textContent = user.username || user.first_name || 'Telegram User';
+                    console.log('Full user object:', user);
+
+                    const displayName = user.first_name || user.username || 'Telegram User';
+                    document.getElementById('user').innerHTML = `
+                        ${displayName}<br>
+                        <small>ID: ${user.id}</small><br>
+                        ${user.username ? `<small>@${user.username}</small><br>` : ''}
+                        ${user.phone_number ? `<small>📞 ${user.phone_number}</small><br>` : ''}
+                        ${user.language_code ? `<small>🌐 ${user.language_code}</small>` : ''}
+                    `;
                 } else {
-                    document.getElementById('user').textContent = 'Guest (No Telegram data)';
+                    console.log('No user in initDataUnsafe');
+                    document.getElementById('user').textContent = 'Guest (No user data)';
                 }
             } else {
+                console.log('Telegram WebApp not available');
                 document.getElementById('user').textContent = 'Guest (No Telegram)';
             }
+            document.getElementById('user').textContent = 'Guest (No Telegram)';
+        }
         } catch (e) {
             document.getElementById('user').textContent = 'Guest (Error: ' + e.message + ')';
         }

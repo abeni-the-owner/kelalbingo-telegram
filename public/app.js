@@ -1,7 +1,68 @@
-// Initialize Telegram Web App
-const tg = window.Telegram?.WebApp || { initDataUnsafe: {}, expand: () => {}, ready: () => {} };
-tg.expand();
-tg.ready();
+// Initialize Telegram Web App with better user data handling
+let tg;
+let telegramUser = null;
+
+function initTelegram() {
+    try {
+        // Check if Telegram WebApp is available
+        if (window.Telegram && window.Telegram.WebApp) {
+            tg = window.Telegram.WebApp;
+            
+            // Initialize Telegram WebApp
+            tg.ready();
+            tg.expand();
+            
+            // Enable closing confirmation
+            tg.enableClosingConfirmation();
+            
+            // Get user data
+            if (tg.initDataUnsafe && tg.initDataUnsafe.user) {
+                telegramUser = tg.initDataUnsafe.user;
+                debugLog('✅ Telegram user found: ' + (telegramUser.username || telegramUser.first_name));
+                debugLog('📱 User ID: ' + telegramUser.id);
+                debugLog('📞 Phone: ' + (telegramUser.phone_number || 'Not provided'));
+                
+                // Validate init data
+                if (tg.initData) {
+                    debugLog('✅ Init data available: ' + tg.initData.length + ' chars');
+                } else {
+                    debugLog('⚠️ No init data - running in test mode');
+                }
+            } else {
+                debugLog('⚠️ No user data in initDataUnsafe');
+                debugLog('🔍 Available data: ' + JSON.stringify(tg.initDataUnsafe));
+            }
+            
+            // Set theme
+            if (tg.themeParams) {
+                document.documentElement.style.setProperty('--tg-theme-bg-color', tg.themeParams.bg_color || '#ffffff');
+                document.documentElement.style.setProperty('--tg-theme-text-color', tg.themeParams.text_color || '#000000');
+            }
+            
+        } else {
+            debugLog('❌ Telegram WebApp not available');
+            tg = {
+                initDataUnsafe: {},
+                ready: () => {},
+                expand: () => {},
+                showAlert: (msg) => alert(msg),
+                enableClosingConfirmation: () => {}
+            };
+        }
+    } catch (error) {
+        debugLog('❌ Telegram init error: ' + error.message);
+        tg = {
+            initDataUnsafe: {},
+            ready: () => {},
+            expand: () => {},
+            showAlert: (msg) => alert(msg),
+            enableClosingConfirmation: () => {}
+        };
+    }
+}
+
+// Initialize Telegram first
+initTelegram();
 
 // API Configuration
 const API_URL = window.location.origin + '/api';
@@ -109,28 +170,46 @@ async function init() {
     // Initialize Socket.IO first
     initSocket();
     
-    // Get Telegram user data
-    const user = tg.initDataUnsafe?.user;
+    // Get user data from Telegram
+    let user = null;
     
-    if (user) {
-        debugLog('✅ User: ' + (user.username || user.first_name));
+    if (telegramUser) {
+        user = telegramUser;
+        debugLog('✅ Using Telegram user: ' + (user.username || user.first_name));
+        
         currentUser = {
             id: user.id,
             telegram_id: user.id,
-            username: user.username || user.first_name,
-            first_name: user.first_name
+            username: user.username || null,
+            first_name: user.first_name || null,
+            last_name: user.last_name || null,
+            phone_number: user.phone_number || null,
+            language_code: user.language_code || 'en'
         };
+        
+        // Display all available user info
+        debugLog('📋 User details:');
+        debugLog('  - ID: ' + currentUser.telegram_id);
+        debugLog('  - Username: ' + (currentUser.username || 'Not set'));
+        debugLog('  - First name: ' + (currentUser.first_name || 'Not set'));
+        debugLog('  - Last name: ' + (currentUser.last_name || 'Not set'));
+        debugLog('  - Phone: ' + (currentUser.phone_number || 'Not provided'));
+        debugLog('  - Language: ' + currentUser.language_code);
+        
     } else {
-        debugLog('⚠️ No user, using guest');
+        debugLog('⚠️ No Telegram user, creating guest user');
         currentUser = {
             id: Date.now(),
             telegram_id: Date.now(),
-            username: 'Guest',
-            first_name: 'Guest'
+            username: null,
+            first_name: 'Guest',
+            last_name: null,
+            phone_number: null,
+            language_code: 'en'
         };
     }
     
-    // Update UI immediately
+    // Update UI immediately with all available info
     updateUI(currentUser, { balance: 0, profit: 0 });
     
     // Load data in background (don't wait)
@@ -194,9 +273,19 @@ async function registerUser(user) {
 
 // Update UI with user data
 function updateUI(user, balance) {
-    document.getElementById('username').textContent = user.username || user.first_name;
+    // Display name (prefer first_name, fallback to username, then Guest)
+    const displayName = user.first_name || user.username || 'Guest';
+    document.getElementById('username').textContent = displayName;
+    
+    // Update balance info
     document.getElementById('balance').textContent = balance.balance || 0;
     document.getElementById('profit').textContent = balance.profit || 0;
+    
+    // Add user info to debug log
+    debugLog('👤 Display name: ' + displayName);
+    if (user.phone_number) {
+        debugLog('📞 Phone: ' + user.phone_number);
+    }
 }
 
 // Load game data

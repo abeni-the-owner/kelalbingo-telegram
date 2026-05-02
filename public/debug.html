@@ -1,0 +1,218 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Telegram Debug - KELALBINGO</title>
+    <script src="https://telegram.org/js/telegram-web-app.js"></script>
+    <style>
+        body {
+            font-family: monospace;
+            background: #000;
+            color: #0f0;
+            padding: 20px;
+            margin: 0;
+            line-height: 1.4;
+        }
+
+        .section {
+            background: #111;
+            border: 1px solid #333;
+            padding: 15px;
+            margin: 15px 0;
+            border-radius: 5px;
+        }
+
+        .title {
+            color: #ff0;
+            font-weight: bold;
+            margin-bottom: 10px;
+        }
+
+        .data {
+            background: #222;
+            padding: 10px;
+            border-radius: 3px;
+            white-space: pre-wrap;
+            word-break: break-all;
+        }
+
+        .error {
+            color: #f00;
+        }
+
+        .success {
+            color: #0f0;
+        }
+
+        .warning {
+            color: #fa0;
+        }
+    </style>
+</head>
+
+<body>
+    <h1>🔍 Telegram WebApp Debug Info</h1>
+
+    <div class="section">
+        <div class="title">1. Telegram WebApp Availability</div>
+        <div id="webapp-status" class="data"></div>
+    </div>
+
+    <div class="section">
+        <div class="title">2. Init Data (Raw)</div>
+        <div id="init-data" class="data"></div>
+    </div>
+
+    <div class="section">
+        <div class="title">3. Init Data Unsafe (Parsed)</div>
+        <div id="init-data-unsafe" class="data"></div>
+    </div>
+
+    <div class="section">
+        <div class="title">4. User Object</div>
+        <div id="user-data" class="data"></div>
+    </div>
+
+    <div class="section">
+        <div class="title">5. Theme Parameters</div>
+        <div id="theme-data" class="data"></div>
+    </div>
+
+    <div class="section">
+        <div class="title">6. Platform Info</div>
+        <div id="platform-data" class="data"></div>
+    </div>
+
+    <div class="section">
+        <div class="title">7. All Available Properties</div>
+        <div id="all-props" class="data"></div>
+    </div>
+
+    <script>
+        function log(elementId, content, type = 'info') {
+            const element = document.getElementById(elementId);
+            element.innerHTML = content;
+            element.className = `data ${type}`;
+        }
+
+        function safeStringify(obj, indent = 2) {
+            try {
+                return JSON.stringify(obj, null, indent);
+            } catch (e) {
+                return `Error stringifying: ${e.message}`;
+            }
+        }
+
+        // Check Telegram WebApp availability
+        if (typeof window.Telegram !== 'undefined' && window.Telegram.WebApp) {
+            log('webapp-status', '✅ Telegram WebApp is available', 'success');
+
+            const tg = window.Telegram.WebApp;
+
+            // Initialize
+            try {
+                tg.ready();
+                tg.expand();
+                log('webapp-status', log('webapp-status').innerHTML + '\n✅ WebApp initialized successfully', 'success');
+            } catch (e) {
+                log('webapp-status', log('webapp-status').innerHTML + '\n❌ WebApp initialization error: ' + e.message, 'error');
+            }
+
+            // Init Data (Raw)
+            if (tg.initData) {
+                log('init-data', `Length: ${tg.initData.length} characters\n\n${tg.initData}`, 'success');
+            } else {
+                log('init-data', '❌ No initData available', 'error');
+            }
+
+            // Init Data Unsafe (Parsed)
+            if (tg.initDataUnsafe) {
+                log('init-data-unsafe', safeStringify(tg.initDataUnsafe), 'success');
+            } else {
+                log('init-data-unsafe', '❌ No initDataUnsafe available', 'error');
+            }
+
+            // User Object
+            if (tg.initDataUnsafe && tg.initDataUnsafe.user) {
+                const user = tg.initDataUnsafe.user;
+                const userInfo = {
+                    id: user.id,
+                    is_bot: user.is_bot,
+                    first_name: user.first_name,
+                    last_name: user.last_name,
+                    username: user.username,
+                    language_code: user.language_code,
+                    phone_number: user.phone_number,
+                    allows_write_to_pm: user.allows_write_to_pm
+                };
+                log('user-data', safeStringify(userInfo), 'success');
+            } else {
+                log('user-data', '❌ No user data available', 'error');
+            }
+
+            // Theme Parameters
+            if (tg.themeParams) {
+                log('theme-data', safeStringify(tg.themeParams), 'success');
+            } else {
+                log('theme-data', '❌ No theme parameters available', 'warning');
+            }
+
+            // Platform Info
+            const platformInfo = {
+                platform: tg.platform,
+                version: tg.version,
+                colorScheme: tg.colorScheme,
+                isExpanded: tg.isExpanded,
+                viewportHeight: tg.viewportHeight,
+                viewportStableHeight: tg.viewportStableHeight
+            };
+            log('platform-data', safeStringify(platformInfo), 'success');
+
+            // All Properties
+            const allProps = {};
+            for (let prop in tg) {
+                try {
+                    if (typeof tg[prop] !== 'function') {
+                        allProps[prop] = tg[prop];
+                    } else {
+                        allProps[prop] = '[Function]';
+                    }
+                } catch (e) {
+                    allProps[prop] = '[Error accessing property]';
+                }
+            }
+            log('all-props', safeStringify(allProps), 'success');
+
+        } else {
+            log('webapp-status', '❌ Telegram WebApp is NOT available', 'error');
+            log('init-data', '❌ Not available - no Telegram WebApp', 'error');
+            log('init-data-unsafe', '❌ Not available - no Telegram WebApp', 'error');
+            log('user-data', '❌ Not available - no Telegram WebApp', 'error');
+            log('theme-data', '❌ Not available - no Telegram WebApp', 'error');
+            log('platform-data', '❌ Not available - no Telegram WebApp', 'error');
+            log('all-props', '❌ Not available - no Telegram WebApp', 'error');
+        }
+
+        // Additional browser info
+        const browserInfo = {
+            userAgent: navigator.userAgent,
+            platform: navigator.platform,
+            language: navigator.language,
+            cookieEnabled: navigator.cookieEnabled,
+            onLine: navigator.onLine,
+            url: window.location.href,
+            referrer: document.referrer
+        };
+
+        document.body.innerHTML += `
+            <div class="section">
+                <div class="title">8. Browser Info</div>
+                <div class="data">${safeStringify(browserInfo)}</div>
+            </div>
+        `;
+    </script>
+</body>
+
+</html>

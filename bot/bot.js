@@ -7,7 +7,7 @@ bot.onText(/\/start/, async (msg) => {
   const userId = msg.from.id;
   const username = msg.from.username || msg.from.first_name;
 
-  const webAppUrl = process.env.WEB_APP_URL || 'https://your-app-url.com';
+  const webAppUrl = process.env.WEB_APP_URL || 'https://kelalbingo-telegram.onrender.com';
 
   const welcomeMessage = `
 🎮 *Welcome to KELALBINGO!*
@@ -15,6 +15,11 @@ bot.onText(/\/start/, async (msg) => {
 Hello ${username}! 👋
 
 Play bingo, win prizes, and have fun!
+
+📱 *User Info:*
+• ID: \`${userId}\`
+• Username: ${msg.from.username ? `@${msg.from.username}` : 'Not set'}
+• Name: ${msg.from.first_name} ${msg.from.last_name || ''}
 
 Click the button below to start playing:
   `;
@@ -30,6 +35,9 @@ Click the button below to start playing:
       [
         { text: '💰 Check Balance', callback_data: 'check_balance' },
         { text: '📊 My Stats', callback_data: 'my_stats' }
+      ],
+      [
+        { text: '📱 Share Contact', request_contact: true }
       ],
       [
         { text: '❓ Help', callback_data: 'help' }
@@ -114,6 +122,36 @@ bot.on('callback_query', async (query) => {
   } catch (error) {
     console.error('Callback query error:', error);
     bot.answerCallbackQuery(query.id, { text: 'Error occurred' });
+  }
+});
+
+// Contact handler for phone numbers
+bot.on('contact', async (msg) => {
+  const chatId = msg.chat.id;
+  const userId = msg.from.id;
+  const contact = msg.contact;
+
+  if (contact.user_id === userId) {
+    // User shared their own contact
+    try {
+      // Update user with phone number
+      await pool.query(
+        `UPDATE users SET phone_number = $1 WHERE telegram_id = $2`,
+        [contact.phone_number, userId]
+      );
+
+      bot.sendMessage(chatId, 
+        `✅ *Phone number saved!*\n\n` +
+        `📞 ${contact.phone_number}\n\n` +
+        `Now you can play with full access!`,
+        { parse_mode: 'Markdown' }
+      );
+    } catch (error) {
+      console.error('Contact save error:', error);
+      bot.sendMessage(chatId, '❌ Error saving contact information');
+    }
+  } else {
+    bot.sendMessage(chatId, '❌ Please share your own contact information');
   }
 });
 
