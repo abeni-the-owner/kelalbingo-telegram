@@ -520,12 +520,15 @@ async function init() {
         updateUI(currentUser, { balance: 0, profit: 0 });
     }, 2000);
 
+    // Generate sample cards immediately to ensure cards are available
+    generateSampleCards();
+
     // Load data in background (don't wait)
     debugLog('📊 Loading data in background...');
     loadGameData().catch(err => {
         debugLog('❌ Load error: ' + err.message);
-        // Generate sample cards as fallback
-        generateSampleCards();
+        // Sample cards already generated above
+        debugLog('📊 Sample cards already available');
     });
 
     // Register user in background (don't wait)
@@ -534,6 +537,27 @@ async function init() {
     });
 
     debugLog('✅ Init completed');
+}
+
+// Load game data (cards, history, stats)
+async function loadGameData() {
+    try {
+        debugLog('📊 Loading game data...');
+
+        // Load cards first
+        await loadCards();
+
+        // Load history
+        await loadHistory();
+
+        // Load stats
+        await loadStats();
+
+        debugLog('✅ Game data loaded successfully');
+    } catch (error) {
+        debugLog('❌ Load game data error: ' + error.message);
+        throw error;
+    }
 }
 
 // Generate sample cards as fallback
@@ -605,7 +629,7 @@ async function registerUser(user) {
 // Load cards from server
 async function loadCards() {
     try {
-        debugLog('� Loading cards from server...');
+        debugLog('🔄 Loading cards from server...');
         const response = await fetch(`${API_URL}/cards`, {
             headers: {
                 'X-Telegram-User-Id': (tg && tg.initDataUnsafe && tg.initDataUnsafe.user && tg.initDataUnsafe.user.id) || (currentUser && currentUser.telegram_id) || 1
@@ -631,10 +655,7 @@ async function loadCards() {
         // Use sample cards as fallback
         generateSampleCards();
 
-        const container = document.getElementById('cards-grid');
-        if (container && allCards.length === 0) {
-            container.innerHTML = `<p class="error">Using sample cards. <button onclick="loadCards()" class="btn btn-secondary">Retry Server</button></p>`;
-        }
+        debugLog('📊 Using sample cards as fallback');
     }
 }
 
@@ -643,21 +664,17 @@ async function loadMyCards() {
     try {
         const response = await fetch(`${API_URL}/cards/my-cards`, {
             headers: {
-                'X-Telegram-User-Id': (tg && tg.initDataUnsafe && tg.initDataUnsafe.user && tg.initDataUnsafe.user.id) || 1
+                'X-Telegram-User-Id': (tg && tg.initDataUnsafe && tg.initDataUnsafe.user && tg.initDataUnsafe.user.id) || (currentUser && currentUser.telegram_id) || 1
             }
         });
-        const data = await response.json();
 
-        // Update selected cards array
-        selectedCards = data.cards.map(card => ({
-            id: card.id,
-            number: card.card_number
-        }));
-
-        updateSelectedCards();
-        updateStartButton();
+        if (response.ok) {
+            const data = await response.json();
+            selectedCards = data.cards || [];
+            debugLog('✅ User cards loaded');
+        }
     } catch (error) {
-        console.error('Load my cards error:', error);
+        debugLog('❌ Load my cards error: ' + error.message);
     }
 }
 
