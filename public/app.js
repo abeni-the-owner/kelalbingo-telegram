@@ -56,25 +56,34 @@ async function initTelegram() {
                 tg.enableClosingConfirmation();
             }
             
-            // Get user data with multiple attempts
+            // Get user data with multiple attempts and better debugging
             let attempts = 0;
-            const maxAttempts = 10;
+            const maxAttempts = 15; // Increased attempts
+            
+            debugLog('🔍 Checking for user data...');
+            debugLog('🔍 Initial initDataUnsafe: ' + JSON.stringify(tg.initDataUnsafe));
             
             while (attempts < maxAttempts && (!tg.initDataUnsafe || !tg.initDataUnsafe.user)) {
-                debugLog(`🔄 Attempt ${attempts + 1}: Waiting for user data...`);
-                await new Promise(resolve => setTimeout(resolve, 200));
+                debugLog(`🔄 Attempt ${attempts + 1}/${maxAttempts}: Waiting for user data...`);
+                await new Promise(resolve => setTimeout(resolve, 300)); // Increased wait time
                 attempts++;
+                
+                // Log what we have so far
+                if (tg.initDataUnsafe) {
+                    debugLog('🔍 Available keys: ' + Object.keys(tg.initDataUnsafe).join(', '));
+                }
             }
             
             // Get user data
             if (tg.initDataUnsafe && tg.initDataUnsafe.user) {
                 telegramUser = tg.initDataUnsafe.user;
-                debugLog('✅ Telegram user found: ' + (telegramUser.username || telegramUser.first_name));
+                debugLog('✅ Telegram user found after ' + attempts + ' attempts');
                 debugLog('📱 User ID: ' + telegramUser.id);
                 debugLog('👤 Username: ' + (telegramUser.username || 'Not set'));
                 debugLog('👤 First name: ' + (telegramUser.first_name || 'Not set'));
                 debugLog('👤 Last name: ' + (telegramUser.last_name || 'Not set'));
                 debugLog('📞 Phone: ' + (telegramUser.phone_number || 'Not provided'));
+                debugLog('🌐 Language: ' + (telegramUser.language_code || 'Not set'));
                 
                 // Validate init data
                 if (tg.initData) {
@@ -84,16 +93,14 @@ async function initTelegram() {
                 }
             } else {
                 debugLog('⚠️ No user data in initDataUnsafe after ' + attempts + ' attempts');
-                if (tg.initDataUnsafe) {
-                    debugLog('🔍 Available data: ' + JSON.stringify(tg.initDataUnsafe));
-                } else {
-                    debugLog('❌ No initDataUnsafe object');
-                }
+                debugLog('🔍 Final initDataUnsafe state: ' + JSON.stringify(tg.initDataUnsafe));
                 
-                // Try to get user data from Telegram object directly
+                // Try alternative methods to get user data
                 if (tg.WebAppUser) {
                     telegramUser = tg.WebAppUser;
-                    debugLog('✅ Found user in WebAppUser: ' + (telegramUser.username || telegramUser.first_name));
+                    debugLog('✅ Found user in WebAppUser: ' + JSON.stringify(telegramUser));
+                } else if (tg.initDataUnsafe && Object.keys(tg.initDataUnsafe).length > 0) {
+                    debugLog('🔍 InitDataUnsafe has data but no user: ' + JSON.stringify(tg.initDataUnsafe));
                 }
             }
             
@@ -236,32 +243,48 @@ async function init() {
     // Initialize Socket.IO
     initSocket();
     
-    // Get user data from multiple sources
+    // Get user data from multiple sources with better debugging
     let user = null;
+    
+    debugLog('🔍 Checking user data sources...');
     
     // Method 1: Try Telegram WebApp user data (best method)
     if (telegramUser) {
         user = telegramUser;
-        debugLog('✅ Using Telegram WebApp user: ' + (user.username || user.first_name));
+        debugLog('✅ Using Telegram WebApp user: ' + JSON.stringify({
+            id: user.id,
+            username: user.username,
+            first_name: user.first_name,
+            last_name: user.last_name
+        }));
     } 
     // Method 2: Try URL parameters (fallback for inline buttons)
     else {
+        debugLog('⚠️ No Telegram user data, checking URL parameters...');
         const urlParams = new URLSearchParams(window.location.search);
         const urlUserId = urlParams.get('user_id');
         const urlUsername = urlParams.get('username');
         const urlFirstName = urlParams.get('first_name');
+        const urlLastName = urlParams.get('last_name');
+        
+        debugLog('🔗 URL params: ' + JSON.stringify({
+            user_id: urlUserId,
+            username: urlUsername,
+            first_name: urlFirstName,
+            last_name: urlLastName,
+            source: urlParams.get('source')
+        }));
         
         if (urlUserId) {
             user = {
                 id: parseInt(urlUserId),
                 username: urlUsername || null,
                 first_name: urlFirstName || null,
-                last_name: null,
+                last_name: urlLastName || null,
                 phone_number: null,
                 language_code: 'en'
             };
-            debugLog('✅ Using URL parameters user: ' + (user.username || user.first_name));
-            debugLog('🔗 Source: ' + urlParams.get('source'));
+            debugLog('✅ Using URL parameters user: ' + JSON.stringify(user));
         }
     }
     
@@ -277,7 +300,7 @@ async function init() {
         };
         
         // Display all available user info
-        debugLog('📋 User details:');
+        debugLog('📋 Final user object:');
         debugLog('  - ID: ' + currentUser.telegram_id);
         debugLog('  - Username: ' + (currentUser.username || 'Not set'));
         debugLog('  - First name: ' + (currentUser.first_name || 'Not set'));
@@ -286,32 +309,102 @@ async function init() {
         debugLog('  - Language: ' + currentUser.language_code);
         
     } else {
-        debugLog('⚠️ No user data available, creating guest user');
+        debugLog('⚠️ No user data available from any source, trying server fallback...');
         
-        // Try to detect if we're in Telegram environment
-        const userAgent = navigator.userAgent;
-        const isTelegramApp = userAgent.includes('Telegram') || 
-                             window.location.href.includes('tgWebAppData') ||
-                             document.referrer.includes('telegram');
-        
-        if (isTelegramApp) {
-            debugLog('🔍 Detected Telegram environment but no user data');
-            debugLog('🔍 This might be a Telegram WebApp configuration issue');
+        // Try to get user data from server based on Telegram environment
+        try {
+            const response = await fetch('/api/user/current', {
+                headers: {
+                    'X-Telegram-Init-Data': tg?.initData || '',
+                    'X-User-Agent': navigator.userAgent
+                }
+            });
+            
+            if (response.ok) {
+                const serverUser = await response.json();
+                if (serverUser && serverUser.user) {
+                    debugLog('✅ Got user data from server: ' + JSON.stringify(serverUser.user));
+                    currentUser = {
+                        id: serverUser.user.telegram_id,
+                        telegram_id: serverUser.user.telegram_id,
+                        username: serverUser.user.username,
+                        first_name: serverUser.user.first_name,
+                        last_name: serverUser.user.last_name,
+                        phone_number: serverUser.user.phone_number,
+                        language_code: serverUser.user.language_code || 'en'
+                    };
+                } else {
+                    throw new Error('No user data from server');
+                }
+            } else {
+                throw new Error('Server request failed');
+            }
+        } catch (serverError) {
+            debugLog('⚠️ Server fallback failed: ' + serverError.message);
+            
+            // Try to detect if we're in Telegram environment
+            const userAgent = navigator.userAgent;
+            const isTelegramApp = userAgent.includes('Telegram') || 
+                                 window.location.href.includes('tgWebAppData') ||
+                                 document.referrer.includes('telegram');
+            
+            debugLog('🔍 Environment check:');
+            debugLog('  - User Agent: ' + userAgent);
+            debugLog('  - URL: ' + window.location.href);
+            debugLog('  - Referrer: ' + document.referrer);
+            debugLog('  - Is Telegram App: ' + isTelegramApp);
+            
+            if (isTelegramApp) {
+                debugLog('🔍 Detected Telegram environment but no user data');
+                debugLog('🔍 This might be a Telegram WebApp configuration issue');
+                
+                // Create a more descriptive guest user for Telegram environment
+                currentUser = {
+                    id: Date.now(),
+                    telegram_id: Date.now(),
+                    username: null,
+                    first_name: 'Telegram User',
+                    last_name: null,
+                    phone_number: null,
+                    language_code: 'en'
+                };
+            } else {
+                // Regular web browser
+                currentUser = {
+                    id: Date.now(),
+                    telegram_id: Date.now(),
+                    username: null,
+                    first_name: 'Web User',
+                    last_name: null,
+                    phone_number: null,
+                    language_code: 'en'
+                };
+            }
+            
+            debugLog('📋 Created fallback user: ' + JSON.stringify(currentUser));
         }
-        
-        currentUser = {
-            id: Date.now(),
-            telegram_id: Date.now(),
-            username: null,
-            first_name: 'Guest',
-            last_name: null,
-            phone_number: null,
-            language_code: 'en'
-        };
     }
     
     // Update UI immediately with all available info
+    debugLog('🎨 Updating UI with user: ' + JSON.stringify({
+        first_name: currentUser.first_name,
+        username: currentUser.username
+    }));
+    
+    // Force update the UI multiple times to ensure it sticks
     updateUI(currentUser, { balance: 0, profit: 0 });
+    
+    // Also update after a short delay to handle any timing issues
+    setTimeout(() => {
+        debugLog('🔄 Secondary UI update...');
+        updateUI(currentUser, { balance: 0, profit: 0 });
+    }, 500);
+    
+    // And one more time after 2 seconds
+    setTimeout(() => {
+        debugLog('🔄 Final UI update...');
+        updateUI(currentUser, { balance: 0, profit: 0 });
+    }, 2000);
     
     // Load data in background (don't wait)
     debugLog('📊 Loading data in background...');
@@ -374,8 +467,14 @@ async function registerUser(user) {
 
 // Update UI with user data
 function updateUI(user, balance) {
+    debugLog('🎨 updateUI called with user: ' + JSON.stringify({
+        first_name: user.first_name,
+        username: user.username,
+        id: user.id || user.telegram_id
+    }));
+    
     // Display name (prefer first_name, fallback to username, then Guest)
-    let displayName = user.first_name || user.username || 'Guest';
+    let displayName = user.first_name || user.username || 'Guest User';
     
     // If we have both first_name and username, show both
     if (user.first_name && user.username) {
@@ -384,11 +483,27 @@ function updateUI(user, balance) {
         displayName = `@${user.username}`;
     }
     
-    document.getElementById('username').textContent = displayName;
+    debugLog('🏷️ Final display name: ' + displayName);
+    
+    // Update the username element
+    const usernameElement = document.getElementById('username');
+    if (usernameElement) {
+        usernameElement.textContent = displayName;
+        debugLog('✅ Username element updated to: ' + displayName);
+    } else {
+        debugLog('❌ Username element not found!');
+    }
     
     // Update balance info
-    document.getElementById('balance').textContent = balance.balance || 0;
-    document.getElementById('profit').textContent = balance.profit || 0;
+    const balanceElement = document.getElementById('balance');
+    const profitElement = document.getElementById('profit');
+    
+    if (balanceElement) {
+        balanceElement.textContent = balance.balance || 0;
+    }
+    if (profitElement) {
+        profitElement.textContent = balance.profit || 0;
+    }
     
     // Add user info to debug log
     debugLog('👤 Display name: ' + displayName);

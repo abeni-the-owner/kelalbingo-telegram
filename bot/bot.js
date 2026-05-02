@@ -63,10 +63,10 @@ Play bingo, win prizes, and have fun!
 • Name: ${msg.from.first_name} ${msg.from.last_name || ''}
 
 🎯 *How to Play:*
-1. Use the 🎲 *Menu Button* at the bottom of the chat
-2. OR click the button below
+1. Click the "🎲 Play Bingo" button below (recommended for username display)
+2. OR use the menu button at the bottom of the chat
 
-*Note: Use the menu button for full features!*
+*Note: The inline button ensures your username is displayed correctly!*
     `;
 
     const keyboard = {
@@ -75,7 +75,10 @@ Play bingo, win prizes, and have fun!
           {
             text: '🎲 Play Bingo',
             web_app: { 
-              url: webAppUrl + '?source=inline&user_id=' + userId + '&username=' + encodeURIComponent(username) + '&first_name=' + encodeURIComponent(msg.from.first_name || '')
+              url: webAppUrl + '?source=inline&user_id=' + userId + 
+                   '&username=' + encodeURIComponent(msg.from.username || '') + 
+                   '&first_name=' + encodeURIComponent(msg.from.first_name || '') +
+                   '&last_name=' + encodeURIComponent(msg.from.last_name || '')
             }
           }
         ],
@@ -85,7 +88,7 @@ Play bingo, win prizes, and have fun!
         ],
         [
           { text: ' Diagnostics', url: webAppUrl + '/diagnose.html' },
-          { text: '🧪 User Test', url: webAppUrl + '/user-test.html' },
+          { text: '🧪 User Test', url: webAppUrl + '/user-test.html?user_id=' + userId + '&username=' + encodeURIComponent(msg.from.username || '') + '&first_name=' + encodeURIComponent(msg.from.first_name || '') },
           { text: '❓ Help', callback_data: 'help' }
         ]
       ]
