@@ -235,18 +235,49 @@
         }
 
         function testAlert() {
-            if (window.Telegram && window.Telegram.WebApp && window.Telegram.WebApp.showAlert) {
-                window.Telegram.WebApp.showAlert('Test alert from Telegram WebApp!');
-            } else {
-                alert('Fallback alert - Telegram WebApp not available');
+            // Check Telegram version and use appropriate method
+            if (window.Telegram && window.Telegram.WebApp) {
+                const tg = window.Telegram.WebApp;
+
+                // Try showAlert first (newer versions)
+                if (tg.showAlert && typeof tg.showAlert === 'function') {
+                    try {
+                        tg.showAlert('Test alert from Telegram WebApp!');
+                        return;
+                    } catch (e) {
+                        console.log('showAlert not supported:', e.message);
+                    }
+                }
+
+                // Try showPopup (medium versions)
+                if (tg.showPopup && typeof tg.showPopup === 'function') {
+                    try {
+                        tg.showPopup({
+                            title: 'Test',
+                            message: 'Test popup from Telegram WebApp!',
+                            buttons: [{ type: 'ok' }]
+                        });
+                        return;
+                    } catch (e) {
+                        console.log('showPopup not supported:', e.message);
+                    }
+                }
             }
+
+            // Fallback to regular alert
+            alert('Fallback alert - Telegram WebApp features not available');
         }
 
         function testHaptic() {
             if (window.Telegram && window.Telegram.WebApp && window.Telegram.WebApp.HapticFeedback) {
-                window.Telegram.WebApp.HapticFeedback.impactOccurred('medium');
+                try {
+                    window.Telegram.WebApp.HapticFeedback.impactOccurred('medium');
+                    console.log('Haptic feedback triggered');
+                } catch (e) {
+                    console.log('Haptic feedback not supported:', e.message);
+                }
             } else {
-                console.log('Haptic feedback not available');
+                console.log('Haptic feedback not available in this version');
             }
         }
 

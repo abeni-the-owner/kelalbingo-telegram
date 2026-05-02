@@ -482,8 +482,14 @@ function toggleCardSelection(cardId, cardNumber) {
     // Check if card is taken by someone else
     if (takenCards[cardId] && takenCards[cardId] !== myUserId) {
         const alertMsg = `Card #${cardNumber} is already selected by another player`;
-        if (tg.showAlert) {
-            tg.showAlert(alertMsg);
+        
+        // Use version-compatible alert
+        if (tg && tg.showAlert && typeof tg.showAlert === 'function') {
+            try {
+                tg.showAlert(alertMsg);
+            } catch (e) {
+                alert(alertMsg);
+            }
         } else {
             alert(alertMsg);
         }

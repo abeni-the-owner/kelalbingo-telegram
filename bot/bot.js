@@ -1,6 +1,19 @@
 const bot = require('../config/telegram');
 const pool = require('../config/database');
 
+// Set menu button for the bot (this passes user data)
+bot.setChatMenuButton({
+  menu_button: {
+    type: 'web_app',
+    text: '🎲 Play Bingo',
+    web_app: {
+      url: process.env.WEB_APP_URL || 'https://kelalbingo-telegram.onrender.com'
+    }
+  }
+}).catch(err => {
+  console.error('Error setting menu button:', err);
+});
+
 // Start command
 bot.onText(/\/start/, async (msg) => {
   const chatId = msg.chat.id;
@@ -21,14 +34,18 @@ Play bingo, win prizes, and have fun!
 • Username: ${msg.from.username ? `@${msg.from.username}` : 'Not set'}
 • Name: ${msg.from.first_name} ${msg.from.last_name || ''}
 
-Click the button below to start playing:
+🎯 *How to Play:*
+1. Use the 🎲 *Menu Button* at the bottom of the chat
+2. OR click the button below
+
+*Note: Use the menu button for full features!*
   `;
 
   const keyboard = {
     inline_keyboard: [
       [
         {
-          text: '🎲 Play Bingo',
+          text: '🎲 Play Bingo (Inline)',
           web_app: { url: webAppUrl }
         }
       ],
@@ -40,6 +57,7 @@ Click the button below to start playing:
         { text: '📱 Share Contact', request_contact: true }
       ],
       [
+        { text: '🔍 Diagnostics', url: webAppUrl + '/diagnose.html' },
         { text: '❓ Help', callback_data: 'help' }
       ]
     ]
