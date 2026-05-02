@@ -1,0 +1,256 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Telegram Test - KELALBINGO</title>
+    <script src="https://telegram.org/js/telegram-web-app.js"></script>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            background: #000;
+            color: #fff;
+            padding: 20px;
+            margin: 0;
+        }
+
+        .status {
+            background: #333;
+            padding: 15px;
+            margin: 10px 0;
+            border-radius: 5px;
+            border-left: 4px solid #0f0;
+        }
+
+        .error {
+            border-left-color: #f00;
+        }
+
+        .warning {
+            border-left-color: #fa0;
+        }
+
+        .info {
+            border-left-color: #0af;
+        }
+
+        .user-card {
+            background: #222;
+            padding: 20px;
+            border-radius: 10px;
+            margin: 20px 0;
+        }
+
+        .user-field {
+            margin: 10px 0;
+            padding: 8px;
+            background: #333;
+            border-radius: 5px;
+        }
+
+        .label {
+            color: #aaa;
+            font-size: 12px;
+        }
+
+        .value {
+            color: #fff;
+            font-weight: bold;
+        }
+    </style>
+</head>
+
+<body>
+    <h1>🔍 Telegram User Data Test</h1>
+
+    <div id="status-container"></div>
+
+    <div class="user-card">
+        <h2>👤 User Information</h2>
+        <div id="user-info">Loading...</div>
+    </div>
+
+    <div class="user-card">
+        <h2>🔧 Technical Details</h2>
+        <div id="tech-info">Loading...</div>
+    </div>
+
+    <script>
+        function addStatus(message, type = 'info') {
+            const container = document.getElementById('status-container');
+            const div = document.createElement('div');
+            div.className = `status ${type}`;
+            div.innerHTML = `<strong>${new Date().toLocaleTimeString()}</strong>: ${message}`;
+            container.appendChild(div);
+        }
+
+        function setUserInfo(html) {
+            document.getElementById('user-info').innerHTML = html;
+        }
+
+        function setTechInfo(html) {
+            document.getElementById('tech-info').innerHTML = html;
+        }
+
+        // Start testing
+        addStatus('🚀 Starting Telegram user data test...', 'info');
+
+        // Check if we're in Telegram
+        const userAgent = navigator.userAgent;
+        const isTelegramApp = userAgent.includes('Telegram');
+        const hasWebAppData = window.location.href.includes('tgWebAppData');
+        const telegramReferrer = document.referrer.includes('telegram');
+
+        addStatus(`📱 User Agent: ${userAgent}`, 'info');
+        addStatus(`🔍 Is Telegram App: ${isTelegramApp}`, isTelegramApp ? 'info' : 'warning');
+        addStatus(`🔗 Has WebApp Data: ${hasWebAppData}`, hasWebAppData ? 'info' : 'warning');
+        addStatus(`📄 Telegram Referrer: ${telegramReferrer}`, telegramReferrer ? 'info' : 'warning');
+
+        // Wait for Telegram WebApp
+        let attempts = 0;
+        const maxAttempts = 50;
+
+        function checkTelegram() {
+            attempts++;
+
+            if (window.Telegram && window.Telegram.WebApp) {
+                addStatus('✅ Telegram WebApp found!', 'info');
+
+                const tg = window.Telegram.WebApp;
+
+                try {
+                    // Initialize
+                    tg.ready();
+                    tg.expand();
+                    addStatus('✅ Telegram WebApp initialized', 'info');
+
+                    // Get user data
+                    if (tg.initDataUnsafe && tg.initDataUnsafe.user) {
+                        const user = tg.initDataUnsafe.user;
+                        addStatus('✅ User data found!', 'info');
+
+                        setUserInfo(`
+                            <div class="user-field">
+                                <div class="label">Telegram ID</div>
+                                <div class="value">${user.id}</div>
+                            </div>
+                            <div class="user-field">
+                                <div class="label">Username</div>
+                                <div class="value">${user.username || 'Not set'}</div>
+                            </div>
+                            <div class="user-field">
+                                <div class="label">First Name</div>
+                                <div class="value">${user.first_name || 'Not set'}</div>
+                            </div>
+                            <div class="user-field">
+                                <div class="label">Last Name</div>
+                                <div class="value">${user.last_name || 'Not set'}</div>
+                            </div>
+                            <div class="user-field">
+                                <div class="label">Phone Number</div>
+                                <div class="value">${user.phone_number || 'Not provided'}</div>
+                            </div>
+                            <div class="user-field">
+                                <div class="label">Language Code</div>
+                                <div class="value">${user.language_code || 'Not set'}</div>
+                            </div>
+                            <div class="user-field">
+                                <div class="label">Is Bot</div>
+                                <div class="value">${user.is_bot ? 'Yes' : 'No'}</div>
+                            </div>
+                        `);
+
+                    } else {
+                        addStatus('❌ No user data in initDataUnsafe', 'error');
+                        setUserInfo(`
+                            <div class="user-field">
+                                <div class="label">Status</div>
+                                <div class="value">No user data available</div>
+                            </div>
+                            <div class="user-field">
+                                <div class="label">Possible Reasons</div>
+                                <div class="value">
+                                    • Not opened through Telegram bot<br>
+                                    • Mini App not properly configured<br>
+                                    • Running in regular browser instead of Telegram
+                                </div>
+                            </div>
+                        `);
+                    }
+
+                    // Technical info
+                    setTechInfo(`
+                        <div class="user-field">
+                            <div class="label">Platform</div>
+                            <div class="value">${tg.platform || 'Unknown'}</div>
+                        </div>
+                        <div class="user-field">
+                            <div class="label">Version</div>
+                            <div class="value">${tg.version || 'Unknown'}</div>
+                        </div>
+                        <div class="user-field">
+                            <div class="label">Color Scheme</div>
+                            <div class="value">${tg.colorScheme || 'Unknown'}</div>
+                        </div>
+                        <div class="user-field">
+                            <div class="label">Init Data Length</div>
+                            <div class="value">${tg.initData ? tg.initData.length + ' characters' : 'No init data'}</div>
+                        </div>
+                        <div class="user-field">
+                            <div class="label">Is Expanded</div>
+                            <div class="value">${tg.isExpanded ? 'Yes' : 'No'}</div>
+                        </div>
+                        <div class="user-field">
+                            <div class="label">Viewport Height</div>
+                            <div class="value">${tg.viewportHeight || 'Unknown'}</div>
+                        </div>
+                    `);
+
+                } catch (error) {
+                    addStatus('❌ Error initializing Telegram: ' + error.message, 'error');
+                }
+
+            } else if (attempts < maxAttempts) {
+                setTimeout(checkTelegram, 100);
+            } else {
+                addStatus('❌ Telegram WebApp not found after 5 seconds', 'error');
+                setUserInfo(`
+                    <div class="user-field">
+                        <div class="label">Status</div>
+                        <div class="value">Telegram WebApp not available</div>
+                    </div>
+                    <div class="user-field">
+                        <div class="label">Instructions</div>
+                        <div class="value">
+                            1. Open Telegram app<br>
+                            2. Find @kelalbingo_bot<br>
+                            3. Send /start<br>
+                            4. Click "🎲 Play Bingo" button
+                        </div>
+                    </div>
+                `);
+
+                setTechInfo(`
+                    <div class="user-field">
+                        <div class="label">Browser</div>
+                        <div class="value">${navigator.userAgent}</div>
+                    </div>
+                    <div class="user-field">
+                        <div class="label">URL</div>
+                        <div class="value">${window.location.href}</div>
+                    </div>
+                    <div class="user-field">
+                        <div class="label">Referrer</div>
+                        <div class="value">${document.referrer || 'None'}</div>
+                    </div>
+                `);
+            }
+        }
+
+        // Start checking
+        setTimeout(checkTelegram, 100);
+    </script>
+</body>
+
+</html>

@@ -1,25 +1,67 @@
 // Initialize Telegram Web App with better user data handling
-let tg;
+let tg = null;
 let telegramUser = null;
+let isInitialized = false;
 
-function initTelegram() {
-    try {
-        // Check if Telegram WebApp is available
+function waitForTelegram() {
+    return new Promise((resolve) => {
+        // Check if Telegram is already available
         if (window.Telegram && window.Telegram.WebApp) {
-            tg = window.Telegram.WebApp;
+            resolve(window.Telegram.WebApp);
+            return;
+        }
+        
+        // Wait for Telegram to load
+        let attempts = 0;
+        const maxAttempts = 50; // 5 seconds max
+        
+        const checkTelegram = () => {
+            attempts++;
+            if (window.Telegram && window.Telegram.WebApp) {
+                resolve(window.Telegram.WebApp);
+            } else if (attempts < maxAttempts) {
+                setTimeout(checkTelegram, 100);
+            } else {
+                // Timeout - create fallback
+                resolve({
+                    initDataUnsafe: {},
+                    ready: () => {},
+                    expand: () => {},
+                    showAlert: (msg) => alert(msg),
+                    enableClosingConfirmation: () => {}
+                });
+            }
+        };
+        
+        setTimeout(checkTelegram, 100);
+    });
+}
+
+async function initTelegram() {
+    try {
+        debugLog('🔄 Waiting for Telegram WebApp...');
+        
+        // Wait for Telegram to be available
+        tg = await waitForTelegram();
+        
+        if (tg && tg.ready) {
+            debugLog('✅ Telegram WebApp found');
             
             // Initialize Telegram WebApp
             tg.ready();
             tg.expand();
             
-            // Enable closing confirmation
-            tg.enableClosingConfirmation();
+            // Enable closing confirmation if available
+            if (tg.enableClosingConfirmation) {
+                tg.enableClosingConfirmation();
+            }
             
             // Get user data
             if (tg.initDataUnsafe && tg.initDataUnsafe.user) {
                 telegramUser = tg.initDataUnsafe.user;
                 debugLog('✅ Telegram user found: ' + (telegramUser.username || telegramUser.first_name));
                 debugLog('📱 User ID: ' + telegramUser.id);
+                debugLog('👤 Username: ' + (telegramUser.username || 'Not set'));
                 debugLog('📞 Phone: ' + (telegramUser.phone_number || 'Not provided'));
                 
                 // Validate init data
@@ -30,27 +72,30 @@ function initTelegram() {
                 }
             } else {
                 debugLog('⚠️ No user data in initDataUnsafe');
-                debugLog('🔍 Available data: ' + JSON.stringify(tg.initDataUnsafe));
+                if (tg.initDataUnsafe) {
+                    debugLog('🔍 Available data: ' + JSON.stringify(tg.initDataUnsafe));
+                } else {
+                    debugLog('❌ No initDataUnsafe object');
+                }
             }
             
-            // Set theme
+            // Set theme if available
             if (tg.themeParams) {
                 document.documentElement.style.setProperty('--tg-theme-bg-color', tg.themeParams.bg_color || '#ffffff');
                 document.documentElement.style.setProperty('--tg-theme-text-color', tg.themeParams.text_color || '#000000');
             }
             
         } else {
-            debugLog('❌ Telegram WebApp not available');
-            tg = {
-                initDataUnsafe: {},
-                ready: () => {},
-                expand: () => {},
-                showAlert: (msg) => alert(msg),
-                enableClosingConfirmation: () => {}
-            };
+            debugLog('❌ Telegram WebApp not available - using fallback');
         }
+        
+        isInitialized = true;
+        
     } catch (error) {
         debugLog('❌ Telegram init error: ' + error.message);
+        isInitialized = true;
+        
+        // Create fallback tg object
         tg = {
             initDataUnsafe: {},
             ready: () => {},
@@ -60,9 +105,6 @@ function initTelegram() {
         };
     }
 }
-
-// Initialize Telegram first
-initTelegram();
 
 // API Configuration
 const API_URL = window.location.origin + '/api';
@@ -167,7 +209,13 @@ let takenCards = {}; // Track cards taken by others: { cardId: userId }
 async function init() {
     debugLog('🚀 Init started');
     
-    // Initialize Socket.IO first
+    // Wait for Telegram to be initialized
+    if (!isInitialized) {
+        debugLog('⏳ Waiting for Telegram initialization...');
+        await initTelegram();
+    }
+    
+    // Initialize Socket.IO
     initSocket();
     
     // Get user data from Telegram
@@ -198,6 +246,18 @@ async function init() {
         
     } else {
         debugLog('⚠️ No Telegram user, creating guest user');
+        
+        // Try to detect if we're in Telegram environment
+        const userAgent = navigator.userAgent;
+        const isTelegramApp = userAgent.includes('Telegram') || 
+                             window.location.href.includes('tgWebAppData') ||
+                             document.referrer.includes('telegram');
+        
+        if (isTelegramApp) {
+            debugLog('🔍 Detected Telegram environment but no user data');
+            debugLog('🔍 This might be a Telegram WebApp configuration issue');
+        }
+        
         currentUser = {
             id: Date.now(),
             telegram_id: Date.now(),
@@ -721,11 +781,18 @@ document.addEventListener('DOMContentLoaded', () => {
     }
 });
 
-// Initialize on load
+// Initialize on load - wait for DOM and Telegram
 if (document.readyState === 'loading') {
-    document.addEventListener('DOMContentLoaded', init);
+    document.addEventListener('DOMContentLoaded', async () => {
+        await initTelegram();
+        await init();
+    });
 } else {
-    init();
+    // DOM already loaded
+    (async () => {
+        await initTelegram();
+        await init();
+    })();
 }
 
 
