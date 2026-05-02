@@ -68,10 +68,7 @@ Play bingo, win prizes, and have fun!
           { text: '📊 My Stats', callback_data: 'my_stats' }
         ],
         [
-          { text: '📱 Share Contact', request_contact: true }
-        ],
-        [
-          { text: '🔍 Diagnostics', url: webAppUrl + '/diagnose.html' },
+          { text: ' Diagnostics', url: webAppUrl + '/diagnose.html' },
           { text: '❓ Help', callback_data: 'help' }
         ]
       ]
@@ -152,13 +149,19 @@ bot.on('callback_query', async (query) => {
     if (data === 'help') {
       bot.sendMessage(chatId,
         `❓ *Help & Instructions*\n\n` +
-        `1. Click "Play Bingo" to start\n` +
+        `🎮 *How to Play:*\n` +
+        `1. Click "🎲 Play Bingo" to start\n` +
         `2. Select your bingo cards\n` +
         `3. Play and win prizes!\n\n` +
-        `Commands:\n` +
+        `📱 *Commands:*\n` +
         `/start - Start the bot\n` +
+        `/test - Test bot connection\n` +
+        `/contact - Share your contact info\n` +
         `/balance - Check your balance\n` +
-        `/stats - View your statistics`,
+        `/menu - Check menu button status\n\n` +
+        `🎯 *Tips:*\n` +
+        `• Use the menu button (🎲) at bottom of chat for best experience\n` +
+        `• Share contact for phone number features`,
         { parse_mode: 'Markdown' }
       );
     }
@@ -197,6 +200,41 @@ bot.on('contact', async (msg) => {
     }
   } else {
     bot.sendMessage(chatId, '❌ Please share your own contact information');
+  }
+});
+
+// Contact sharing command
+bot.onText(/\/contact/, async (msg) => {
+  console.log('📨 Received /contact command from user:', msg.from.id);
+  const chatId = msg.chat.id;
+  
+  try {
+    const keyboard = {
+      keyboard: [
+        [
+          { text: '📱 Share My Contact', request_contact: true }
+        ],
+        [
+          { text: '❌ Cancel' }
+        ]
+      ],
+      resize_keyboard: true,
+      one_time_keyboard: true
+    };
+    
+    await bot.sendMessage(chatId, 
+      '📱 *Share Your Contact*\n\n' +
+      'Sharing your contact will help us provide better service and enable phone number features.\n\n' +
+      'Click the button below to share your contact information:',
+      { 
+        parse_mode: 'Markdown',
+        reply_markup: keyboard 
+      }
+    );
+    
+    console.log('✅ Contact request sent successfully');
+  } catch (error) {
+    console.error('❌ Error in /contact command:', error);
   }
 });
 
