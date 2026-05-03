@@ -10,6 +10,7 @@ let socket = null;
 let socketReady = false;
 let currentRound = 1;
 let isInitialized = false;
+let heartbeatInterval = null;
 
 // API URL
 const API_URL = window.location.origin + '/api';
@@ -21,7 +22,7 @@ function debugLog(message) {
         const timestamp = new Date().toLocaleTimeString();
         debugElement.innerHTML += `<div>[${timestamp}] ${message}</div>`;
         debugElement.scrollTop = debugElement.scrollHeight;
-        
+
         // Keep only last 50 messages
         const messages = debugElement.children;
         if (messages.length > 50) {
@@ -38,14 +39,14 @@ function waitForTelegram() {
             resolve(window.Telegram.WebApp);
             return;
         }
-        
+
         const checkInterval = setInterval(() => {
             if (window.Telegram && window.Telegram.WebApp) {
                 clearInterval(checkInterval);
                 resolve(window.Telegram.WebApp);
             }
         }, 100);
-        
+
         // Timeout after 5 seconds
         setTimeout(() => {
             clearInterval(checkInterval);
@@ -58,43 +59,43 @@ function waitForTelegram() {
 async function initTelegram() {
     try {
         debugLog('🔄 Waiting for Telegram WebApp...');
-        
+
         tg = await waitForTelegram();
-        
+
         if (tg && tg.ready) {
             debugLog('✅ Telegram WebApp found');
-            
+
             tg.ready();
             tg.expand();
-            
+
             if (tg.enableClosingConfirmation) {
                 tg.enableClosingConfirmation();
             }
-            
+
             // Get user data
             let attempts = 0;
             const maxAttempts = 15;
-            
+
             debugLog('🔍 Checking for user data...');
             debugLog('🔍 Initial initDataUnsafe: ' + JSON.stringify(tg.initDataUnsafe));
-            
+
             while (attempts < maxAttempts && (!tg.initDataUnsafe || !tg.initDataUnsafe.user)) {
                 debugLog(`🔄 Attempt ${attempts + 1}/${maxAttempts}: Waiting for user data...`);
                 await new Promise(resolve => setTimeout(resolve, 300));
                 attempts++;
-                
+
                 if (tg.initDataUnsafe) {
                     debugLog('🔍 Available keys: ' + Object.keys(tg.initDataUnsafe).join(', '));
                 }
             }
-            
+
             if (tg.initDataUnsafe && tg.initDataUnsafe.user) {
                 const telegramUser = tg.initDataUnsafe.user;
                 debugLog('✅ Telegram user found after ' + attempts + ' attempts');
                 debugLog('📱 User ID: ' + telegramUser.id);
                 debugLog('👤 Username: ' + (telegramUser.username || 'Not set'));
                 debugLog('👤 First name: ' + (telegramUser.first_name || 'Not set'));
-                
+
                 currentUser = {
                     id: telegramUser.id,
                     telegram_id: telegramUser.id,
@@ -116,7 +117,7 @@ async function initTelegram() {
                     language_code: 'en'
                 };
             }
-            
+
             // Set theme
             if (tg.themeParams) {
                 document.documentElement.style.setProperty('--tg-theme-bg-color', tg.themeParams.bg_color || '#ffffff');
@@ -134,13 +135,13 @@ async function initTelegram() {
                 language_code: 'en'
             };
         }
-        
+
         isInitialized = true;
-        
+
     } catch (error) {
         debugLog('❌ Telegram init error: ' + error.message);
         isInitialized = true;
-        
+
         currentUser = {
             id: Date.now(),
             telegram_id: Date.now(),
@@ -160,40 +161,40 @@ function updateUI(user, balance) {
         username: user.username,
         id: user.id || user.telegram_id
     }));
-    
+
     let displayName = user.first_name || user.username || 'Guest User';
-    
+
     if (user.first_name && user.username) {
         displayName = `${user.first_name} (@${user.username})`;
     } else if (user.username && !user.first_name) {
         displayName = `@${user.username}`;
     }
-    
+
     debugLog('🏷️ Final display name: ' + displayName);
-    
+
     const usernameElement = document.getElementById('username');
     if (usernameElement) {
         usernameElement.textContent = displayName;
         usernameElement.innerText = displayName;
         usernameElement.innerHTML = displayName;
-        
+
         usernameElement.style.display = 'none';
         usernameElement.offsetHeight;
         usernameElement.style.display = '';
-        
+
         debugLog('✅ Username element updated to: ' + displayName);
     }
-    
+
     const balanceElement = document.getElementById('balance');
     const profitElement = document.getElementById('profit');
-    
+
     if (balanceElement) {
         balanceElement.textContent = balance.balance || 0;
     }
     if (profitElement) {
         profitElement.textContent = balance.profit || 0;
     }
-    
+
     debugLog('👤 Display name: ' + displayName);
 }
 
@@ -203,13 +204,65 @@ function initSocket() {
         debugLog('⚠️ Socket.IO not loaded, continuing without real-time features');
         return;
     }
-    
+
     try {
         socket = io(window.location.origin);
         setupSocketEvents();
         debugLog('🔌 Socket.IO initialized');
     } catch (error) {
         debugLog('❌ Socket.IO init error: ' + error.message);
+    }
+}
+
+// Start heartbeat system
+function startHeartbeat() {
+    if (heartbeatInterval) {
+        clearInterval(heartbeatInterval);
+    }
+
+    heartbeatInterval = setInterval(() => {
+        if (socketReady && socket && currentUser) {
+            socket.emit('heartbeat', {
+                userId: currentUser.telegram_id,
+                timestamp: Date.now()
+            });
+            debugLog('💓 Heartbeat sent');
+        }
+    }, 30000); // Send heartbeat every 30 seconds
+
+    debugLog('💓 Heartbeat system started');
+}
+
+// Stop heartbeat system
+function stopHeartbeat() {
+    if (heartbeatInterval) {
+        clearInterval(heartbeatInterval);
+        heartbeatInterval = null;
+        debugLog('💓 Heartbeat system stopped');
+    }
+}
+
+// Cleanup function to release cards
+function cleanupCardSelections() {
+    if (socketReady && socket && currentUser && selectedCards.length > 0) {
+        debugLog('🧹 Cleaning up card selections before disconnect');
+
+        // Release all selected cards
+        selectedCards.forEach(card => {
+            socket.emit('deselect-card', {
+                roundNumber: currentRound,
+                cardId: card.id,
+                cardNumber: card.number,
+                userId: currentUser.telegram_id,
+                cleanup: true // Flag to indicate this is a cleanup
+            });
+        });
+
+        // Notify server that user is leaving
+        socket.emit('user-leaving', {
+            userId: currentUser.telegram_id,
+            timestamp: Date.now()
+        });
     }
 }
 
@@ -220,12 +273,15 @@ function setupSocketEvents() {
     socket.on('connect', () => {
         socketReady = true;
         debugLog('🔌 Connected to server');
-        
+
         if (currentUser) {
             socket.emit('join-round', {
                 roundNumber: currentRound,
                 userId: currentUser.telegram_id
             });
+
+            // Start heartbeat after connecting
+            startHeartbeat();
         }
     });
 
@@ -233,11 +289,14 @@ function setupSocketEvents() {
         console.error('Socket connection error:', error);
         socketReady = false;
         debugLog('❌ Socket error: ' + error.message);
+        stopHeartbeat();
     });
 
     socket.on('disconnect', () => {
         socketReady = false;
         debugLog('🔌 Disconnected from server');
+        stopHeartbeat();
+        cleanupCardSelections();
     });
 
     socket.on('current-selections', (selections) => {
@@ -344,7 +403,7 @@ async function loadCards() {
     }
 }
 
-// Display cards in the grid
+// Display cards in the grid (numbers only for mobile)
 function displayCards(cards) {
     const container = document.getElementById('cards-grid');
     if (!container) {
@@ -362,7 +421,7 @@ function displayCards(cards) {
     container.innerHTML = cards.map(card => {
         const isTaken = takenCards[card.id];
         const isTakenByMe = isTaken === myUserId;
-        
+
         return `
             <div class="card-item ${isTakenByMe ? 'selected' : ''} ${isTaken && !isTakenByMe ? 'taken' : ''}" 
                  onclick="toggleCardSelection(${card.id}, ${card.card_number})"
@@ -370,9 +429,6 @@ function displayCards(cards) {
                 <div class="card-number">#${card.card_number}</div>
                 <div class="card-status">
                     ${isTakenByMe ? '✓ Selected' : isTaken ? '👤 Taken' : '📋 Available'}
-                </div>
-                <div class="card-preview">
-                    ${generateCardPreview(card)}
                 </div>
             </div>
         `;
@@ -400,10 +456,10 @@ function generateCardPreview(card) {
 // Toggle card selection
 function toggleCardSelection(cardId, cardNumber) {
     const myUserId = (currentUser && currentUser.telegram_id) || 1;
-    
+
     if (takenCards[cardId] && takenCards[cardId] !== myUserId) {
         const alertMsg = `Card #${cardNumber} is already selected by another player`;
-        
+
         if (tg && tg.showAlert && typeof tg.showAlert === 'function') {
             try {
                 tg.showAlert(alertMsg);
@@ -456,9 +512,13 @@ function toggleCardSelection(cardId, cardNumber) {
 // Update selected cards display
 function updateSelectedCards() {
     const container = document.getElementById('selected-cards');
+    const bingoDisplay = document.getElementById('selected-cards-display');
 
     if (selectedCards.length === 0) {
         container.innerHTML = '<p class="empty-state">No cards selected. Tap card numbers above to select.</p>';
+        if (bingoDisplay) {
+            bingoDisplay.style.display = 'none';
+        }
         return;
     }
 
@@ -468,6 +528,56 @@ function updateSelectedCards() {
             <button class="remove-card" onclick="removeCard(${card.id})">✕</button>
         </div>
     `).join('');
+
+    // Show bingo cards display
+    if (bingoDisplay) {
+        bingoDisplay.style.display = 'block';
+        displaySelectedBingoCards();
+    }
+}
+
+// Display selected cards as bingo grids
+function displaySelectedBingoCards() {
+    const container = document.getElementById('bingo-cards-container');
+    if (!container) return;
+
+    const selectedCardData = selectedCards.map(selected => {
+        const card = allCards.find(c => c.id === selected.id);
+        return card;
+    }).filter(Boolean);
+
+    if (selectedCardData.length === 0) {
+        container.innerHTML = '<p class="empty-state">No cards to display</p>';
+        return;
+    }
+
+    container.innerHTML = selectedCardData.map(card => `
+        <div class="bingo-card-display">
+            <div class="bingo-card-header">Card #${card.card_number}</div>
+            <div class="bingo-grid-header">
+                <div class="bingo-letter">B</div>
+                <div class="bingo-letter">I</div>
+                <div class="bingo-letter">N</div>
+                <div class="bingo-letter">G</div>
+                <div class="bingo-letter">O</div>
+            </div>
+            ${generateBingoGrid(card)}
+        </div>
+    `).join('');
+}
+
+// Generate bingo grid for a card
+function generateBingoGrid(card) {
+    let html = '<div class="bingo-grid">';
+    for (let row = 0; row < 5; row++) {
+        html += `<div class="bingo-cell">${card.b_column[row]}</div>`;
+        html += `<div class="bingo-cell">${card.i_column[row]}</div>`;
+        html += `<div class="bingo-cell ${card.n_column[row] === 0 ? 'free' : ''}">${card.n_column[row] === 0 ? 'FREE' : card.n_column[row]}</div>`;
+        html += `<div class="bingo-cell">${card.g_column[row]}</div>`;
+        html += `<div class="bingo-cell">${card.o_column[row]}</div>`;
+    }
+    html += '</div>';
+    return html;
 }
 
 // Remove card
@@ -529,30 +639,73 @@ async function registerUser(user) {
     }
 }
 
+// Setup page cleanup events
+function setupCleanupEvents() {
+    // Cleanup when page is unloaded
+    const cleanupHandler = () => {
+        debugLog('🧹 Page unloading - cleaning up card selections');
+        cleanupCardSelections();
+        stopHeartbeat();
+    };
+
+    // Multiple events to catch different scenarios
+    window.addEventListener('beforeunload', cleanupHandler);
+    window.addEventListener('unload', cleanupHandler);
+    window.addEventListener('pagehide', cleanupHandler);
+
+    // Telegram WebApp specific events
+    if (tg && tg.onEvent) {
+        tg.onEvent('viewportChanged', () => {
+            // If viewport changes dramatically, user might be closing
+            if (tg.viewportHeight < 100) {
+                cleanupHandler();
+            }
+        });
+    }
+
+    // Handle visibility change (user switches apps)
+    document.addEventListener('visibilitychange', () => {
+        if (document.hidden) {
+            debugLog('👁️ Page hidden - starting cleanup timer');
+            // Start a timer to cleanup if user doesn't return
+            setTimeout(() => {
+                if (document.hidden) {
+                    cleanupHandler();
+                }
+            }, 60000); // Cleanup after 1 minute of being hidden
+        } else {
+            debugLog('👁️ Page visible - user returned');
+        }
+    });
+
+    debugLog('🧹 Cleanup events setup completed');
+}
+
 // Initialize game page
 async function initGamePage() {
     debugLog('🚀 Game page init started');
-    
+
     if (!isInitialized) {
         await initTelegram();
     }
-    
+
     initSocket();
-    
+    setupCleanupEvents();
+
     if (currentUser) {
         updateUI(currentUser, { balance: 0, profit: 0 });
-        
+
         generateSampleCards();
-        
+
         loadCards().catch(err => {
             debugLog('❌ Load cards error: ' + err.message);
         });
-        
+
         registerUser(currentUser).catch(err => {
             debugLog('❌ Register error: ' + err.message);
         });
     }
-    
+
     debugLog('✅ Game page init completed');
 }
 

@@ -75,16 +75,35 @@ app.use((err, req, res, next) => {
 io.on('connection', (socket) => {
     console.log('👤 User connected:', socket.id);
 
+    // Track user activity for timeout
+    socket.lastHeartbeat = Date.now();
+    socket.userId = null;
+
     // User joins a room (round-based)
     socket.on('join-round', (data) => {
         const { roundNumber, userId } = data;
         socket.join(`round-${roundNumber}`);
         socket.userId = userId;
+        socket.lastHeartbeat = Date.now();
         console.log(`User ${userId} joined round ${roundNumber}`);
 
         // Send current card selections for this round
         const roundSelections = cardSelections.get(roundNumber) || {};
         socket.emit('current-selections', roundSelections);
+    });
+
+    // Handle heartbeat from client
+    socket.on('heartbeat', (data) => {
+        const { userId, timestamp } = data;
+        socket.lastHeartbeat = Date.now();
+        console.log(`💓 Heartbeat received from user ${userId}`);
+    });
+
+    // Handle user leaving
+    socket.on('user-leaving', (data) => {
+        const { userId, timestamp } = data;
+        console.log(`👋 User ${userId} is leaving - cleaning up cards`);
+        cleanupUserCards(userId);
     });
 
     // User selects a card (real-time, no database)
@@ -139,8 +158,49 @@ io.on('connection', (socket) => {
     // User disconnects
     socket.on('disconnect', () => {
         console.log('👤 User disconnected:', socket.id);
+        if (socket.userId) {
+            cleanupUserCards(socket.userId);
+        }
     });
 });
+
+// Cleanup function to remove user's card selections
+function cleanupUserCards(userId) {
+    console.log(`🧹 Cleaning up cards for user ${userId}`);
+
+    // Iterate through all rounds and remove this user's selections
+    for (const [roundNumber, selections] of cardSelections.entries()) {
+        let hasChanges = false;
+
+        // Remove cards selected by this user
+        for (const [cardId, selectedUserId] of Object.entries(selections)) {
+            if (selectedUserId === userId) {
+                delete selections[cardId];
+                hasChanges = true;
+                console.log(`🗑️ Released card ${cardId} from user ${userId}`);
+            }
+        }
+
+        // Notify other players in the round about the changes
+        if (hasChanges) {
+            io.to(`round-${roundNumber}`).emit('current-selections', selections);
+        }
+    }
+}
+
+// Timeout mechanism to clean up inactive users
+setInterval(() => {
+    const now = Date.now();
+    const timeout = 90000; // 90 seconds timeout
+
+    io.sockets.sockets.forEach((socket) => {
+        if (socket.userId && (now - socket.lastHeartbeat) > timeout) {
+            console.log(`⏰ User ${socket.userId} timed out - cleaning up cards`);
+            cleanupUserCards(socket.userId);
+            socket.lastHeartbeat = now; // Reset to avoid multiple cleanups
+        }
+    });
+}, 30000); // Check every 30 seconds
 
 // Initialize Telegram Bot
 require('./bot/bot');
