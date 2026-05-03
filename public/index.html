@@ -6,233 +6,215 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
     <title>KELALBINGO</title>
     <script src="https://telegram.org/js/telegram-web-app.js"></script>
-    <script>
-        // Fallback for Socket.IO if CDN fails
-        window.socketIOLoaded = false;
-
-        function loadSocketIO() {
-            const script = document.createElement('script');
-            script.src = 'https://cdn.socket.io/4.6.1/socket.io.min.js';
-            script.crossOrigin = 'anonymous';
-            script.onload = () => {
-                window.socketIOLoaded = true;
-                console.log('✅ Socket.IO loaded');
-            };
-            script.onerror = () => {
-                console.warn('❌ Socket.IO CDN failed, continuing without real-time features');
-                window.socketIOLoaded = false;
-            };
-            document.head.appendChild(script);
-        }
-        loadSocketIO();
-    </script>
     <link rel="stylesheet" href="styles.css">
 </head>
 
 <body>
     <div id="app">
-        <!-- Main Navigation -->
-        <div class="main-nav">
-            <div class="nav-header">
+        <!-- Landing Page -->
+        <div class="landing-page">
+            <div class="landing-header">
                 <h1 class="app-title">🎮 KELALBINGO</h1>
-                <div class="user-info">
-                    <span id="username">Loading...</span>
+                <p class="app-subtitle">Play Bingo & Win Big!</p>
+            </div>
+
+            <div class="landing-nav">
+                <div class="nav-grid">
+                    <a href="game.html" class="nav-card">
+                        <div class="nav-icon">🎲</div>
+                        <div class="nav-title">Play Game</div>
+                        <div class="nav-description">Select cards and start playing</div>
+                    </a>
+
+                    <a href="account.html" class="nav-card">
+                        <div class="nav-icon">👤</div>
+                        <div class="nav-title">My Account</div>
+                        <div class="nav-description">View stats and balance</div>
+                    </a>
+
+                    <a href="referral.html" class="nav-card">
+                        <div class="nav-icon">🎁</div>
+                        <div class="nav-title">Referrals</div>
+                        <div class="nav-description">Invite friends & earn</div>
+                    </a>
                 </div>
             </div>
-            <div class="nav-tabs">
-                <button class="nav-tab active" data-page="game">🎲 Game</button>
-                <button class="nav-tab" data-page="account">👤 Account</button>
-                <button class="nav-tab" data-page="referral">🎁 Referral</button>
-            </div>
-        </div>
 
-        <!-- Game Page -->
-        <div id="game-page" class="page active">
-            <!-- Balance & Round Info -->
-            <div class="game-header">
-                <div class="balance-info">
-                    <div class="balance">
-                        <span class="label">Balance:</span>
-                        <span id="balance" class="value">0</span> Birr
+            <div class="landing-info">
+                <h2>How to Play</h2>
+                <div class="info-steps">
+                    <div class="step">
+                        <span class="step-number">1</span>
+                        <span class="step-text">Select your bingo cards</span>
                     </div>
-                    <div class="profit">
-                        <span class="label">Profit:</span>
-                        <span id="profit" class="value">0</span> Birr
+                    <div class="step">
+                        <span class="step-number">2</span>
+                        <span class="step-text">Wait for the game to start</span>
                     </div>
-                </div>
-                <div class="round-info">
-                    <h2>ROUND <span id="round-number">1</span></h2>
-                </div>
-            </div>
-
-            <!-- Card Selection Section -->
-            <div class="card-selection-section">
-                <h3 class="section-title">🃏 Select Your Cards</h3>
-                <div id="cards-grid" class="cards-grid-compact">
-                    <p class="loading">Loading cards...</p>
-                </div>
-            </div>
-
-            <!-- Game Controls -->
-            <div class="game-controls">
-                <h3>Selected Cards</h3>
-                <div id="selected-cards" class="selected-cards">
-                    <p class="empty-state">No cards selected</p>
-                </div>
-                <button id="start-game-btn" class="btn btn-primary" disabled>
-                    Start Game
-                </button>
-            </div>
-
-            <!-- Debug Log -->
-            <div id="debug-log" style="background: #222; color: #0f0; padding: 10px; border-radius: 5px; font-size: 12px; margin: 10px 0; max-height: 100px; overflow-y: auto;">
-            </div>
-        </div>
-
-        <!-- Account Page -->
-        <div id="account-page" class="page">
-            <div class="account-header">
-                <div class="profile-section">
-                    <div class="profile-avatar">
-                        <span id="profile-avatar-text">👤</span>
+                    <div class="step">
+                        <span class="step-number">3</span>
+                        <span class="step-text">Mark numbers as they're called</span>
                     </div>
-                    <div class="profile-info">
-                        <h2 id="profile-name">Loading...</h2>
-                        <p id="profile-username">@username</p>
+                    <div class="step">
+                        <span class="step-number">4</span>
+                        <span class="step-text">Win prizes with patterns!</span>
                     </div>
                 </div>
             </div>
 
-            <div class="account-stats">
-                <h3>📊 Your Statistics</h3>
-                <div class="stats-grid">
-                    <div class="stat-card">
-                        <div class="stat-icon">🎮</div>
-                        <div class="stat-content">
-                            <div class="stat-value" id="total-games">0</div>
-                            <div class="stat-label">Total Games</div>
-                        </div>
-                    </div>
-                    <div class="stat-card">
-                        <div class="stat-icon">💰</div>
-                        <div class="stat-content">
-                            <div class="stat-value" id="total-bet">0</div>
-                            <div class="stat-label">Total Bet</div>
-                        </div>
-                    </div>
-                    <div class="stat-card">
-                        <div class="stat-icon">🏆</div>
-                        <div class="stat-content">
-                            <div class="stat-value" id="total-payout">0</div>
-                            <div class="stat-label">Total Payout</div>
-                        </div>
-                    </div>
-                    <div class="stat-card">
-                        <div class="stat-icon">📈</div>
-                        <div class="stat-content">
-                            <div class="stat-value" id="total-profit">0</div>
-                            <div class="stat-label">Net Profit</div>
-                        </div>
-                    </div>
-                </div>
-            </div>
-
-            <div class="account-balance">
-                <h3>💳 Balance Information</h3>
-                <div class="balance-card">
-                    <div class="balance-row">
-                        <span>Current Balance:</span>
-                        <span id="account-balance" class="balance-amount">0 Birr</span>
-                    </div>
-                    <div class="balance-row">
-                        <span>Total Profit:</span>
-                        <span id="account-profit" class="profit-amount">0 Birr</span>
-                    </div>
-                </div>
-            </div>
-
-            <div class="account-history">
-                <h3>📜 Recent Games</h3>
-                <div id="account-history-list" class="history-list">
-                    <p class="loading">Loading game history...</p>
-                </div>
-            </div>
-        </div>
-
-        <!-- Referral Page -->
-        <div id="referral-page" class="page">
-            <div class="referral-header">
-                <h2>🎁 Invite & Earn</h2>
-                <p>Invite friends and earn bonuses when they play!</p>
-            </div>
-
-            <div class="referral-code-section">
-                <h3>Your Referral Code</h3>
-                <div class="referral-code-box">
-                    <span id="referral-code">LOADING...</span>
-                    <button id="copy-referral-btn" class="btn btn-secondary">📋 Copy</button>
-                </div>
-                <p class="referral-note">Share this code with friends to earn bonuses!</p>
-            </div>
-
-            <div class="referral-link-section">
-                <h3>Referral Link</h3>
-                <div class="referral-link-box">
-                    <span id="referral-link">https://t.me/your_bot?start=REF_CODE</span>
-                    <button id="copy-link-btn" class="btn btn-secondary">📋 Copy</button>
-                </div>
-            </div>
-
-            <div class="referral-stats">
-                <h3>📊 Your Referrals</h3>
-                <div class="referral-stats-grid">
-                    <div class="referral-stat">
-                        <div class="stat-value" id="total-referrals">0</div>
-                        <div class="stat-label">Total Referrals</div>
-                    </div>
-                    <div class="referral-stat">
-                        <div class="stat-value" id="referral-bonus">0</div>
-                        <div class="stat-label">Bonus Earned</div>
-                    </div>
-                    <div class="referral-stat">
-                        <div class="stat-value" id="active-referrals">0</div>
-                        <div class="stat-label">Active Players</div>
-                    </div>
-                </div>
-            </div>
-
-            <div class="referral-list">
-                <h3>👥 Referral List</h3>
-                <div id="referral-list-content" class="referral-list-content">
-                    <p class="loading">Loading referrals...</p>
-                </div>
-            </div>
-
-            <div class="referral-info">
-                <h3>ℹ️ How It Works</h3>
-                <div class="info-list">
-                    <div class="info-item">
-                        <span class="info-icon">1️⃣</span>
-                        <span>Share your referral code or link with friends</span>
-                    </div>
-                    <div class="info-item">
-                        <span class="info-icon">2️⃣</span>
-                        <span>Friends join using your code</span>
-                    </div>
-                    <div class="info-item">
-                        <span class="info-icon">3️⃣</span>
-                        <span>Earn bonuses when they play games</span>
-                    </div>
-                    <div class="info-item">
-                        <span class="info-icon">4️⃣</span>
-                        <span>Track your earnings in real-time</span>
-                    </div>
-                </div>
+            <div class="landing-footer">
+                <p> 2024 KELALBINGO - Play Responsibly</p>
             </div>
         </div>
     </div>
 
-    <script src="app.js"></script>
+    <style>
+        .landing-page {
+            min-height: 100vh;
+            padding: 20px;
+            text-align: center;
+            background: var(--tg-theme-bg-color, #ffffff);
+            color: var(--tg-theme-text-color, #000000);
+        }
+        
+        .landing-header {
+            margin-bottom: 40px;
+        }
+        
+        .app-title {
+            font-size: 2.5rem;
+            font-weight: bold;
+            margin-bottom: 10px;
+            background: linear-gradient(45deg, var(--tg-theme-button-color, #3390ec), #4caf50);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            background-clip: text;
+        }
+        
+        .app-subtitle {
+            font-size: 1.2rem;
+            color: var(--tg-theme-hint-color, #999999);
+            margin: 0;
+        }
+        
+        .landing-nav {
+            margin-bottom: 40px;
+        }
+        
+        .nav-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+            gap: 20px;
+            max-width: 600px;
+            margin: 0 auto;
+        }
+        
+        .nav-card {
+            background: var(--tg-theme-secondary-bg-color, #f8f9fa);
+            border: 2px solid var(--tg-theme-hint-color, #e1e1e1);
+            border-radius: 16px;
+            padding: 30px 20px;
+            text-decoration: none;
+            color: inherit;
+            transition: all 0.3s ease;
+            display: block;
+        }
+        
+        .nav-card:hover {
+            transform: translateY(-5px);
+            box-shadow: 0 8px 25px rgba(0, 0, 0, 0.1);
+            border-color: var(--tg-theme-button-color, #3390ec);
+        }
+        
+        .nav-icon {
+            font-size: 3rem;
+            margin-bottom: 15px;
+        }
+        
+        .nav-title {
+            font-size: 1.3rem;
+            font-weight: bold;
+            margin-bottom: 8px;
+            color: var(--tg-theme-text-color, #000000);
+        }
+        
+        .nav-description {
+            font-size: 0.9rem;
+            color: var(--tg-theme-hint-color, #999999);
+        }
+        
+        .landing-info {
+            margin-bottom: 40px;
+        }
+        
+        .landing-info h2 {
+            margin-bottom: 20px;
+            color: var(--tg-theme-text-color, #000000);
+        }
+        
+        .info-steps {
+            max-width: 400px;
+            margin: 0 auto;
+        }
+        
+        .step {
+            display: flex;
+            align-items: center;
+            gap: 15px;
+            margin-bottom: 15px;
+            text-align: left;
+        }
+        
+        .step-number {
+            width: 30px;
+            height: 30px;
+            border-radius: 50%;
+            background: var(--tg-theme-button-color, #3390ec);
+            color: white;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-weight: bold;
+            flex-shrink: 0;
+        }
+        
+        .step-text {
+            font-size: 0.95rem;
+            color: var(--tg-theme-text-color, #000000);
+        }
+        
+        .landing-footer {
+            margin-top: 40px;
+            padding-top: 20px;
+            border-top: 1px solid var(--tg-theme-hint-color, #e1e1e1);
+        }
+        
+        .landing-footer p {
+            color: var(--tg-theme-hint-color, #999999);
+            font-size: 0.8rem;
+            margin: 0;
+        }
+        
+        @media (max-width: 480px) {
+            .app-title {
+                font-size: 2rem;
+            }
+            .nav-grid {
+                grid-template-columns: 1fr;
+            }
+            .nav-card {
+                padding: 20px 15px;
+            }
+        }
+    </style>
+
+    <script>
+        // Initialize Telegram WebApp
+        if (window.Telegram && window.Telegram.WebApp) {
+            window.Telegram.WebApp.ready();
+            window.Telegram.WebApp.expand();
+        }
+    </script>
 </body>
 
 </html>

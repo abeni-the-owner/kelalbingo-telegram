@@ -1,0 +1,105 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>KELALBINGO - Referral</title>
+    <script src="https://telegram.org/js/telegram-web-app.js"></script>
+    <link rel="stylesheet" href="styles.css">
+</head>
+
+<body>
+    <div id="app">
+        <!-- Main Navigation -->
+        <div class="main-nav">
+            <div class="nav-header">
+                <h1 class="app-title">🎮 KELALBINGO</h1>
+                <div class="user-info">
+                    <span id="username">Loading...</span>
+                </div>
+            </div>
+            <div class="nav-tabs">
+                <button class="nav-tab" data-page="game" onclick="window.location.href='game.html'">🎲 Game</button>
+                <button class="nav-tab" data-page="account" onclick="window.location.href='account.html'">👤 Account</button>
+                <button class="nav-tab active" data-page="referral">🎁 Referral</button>
+            </div>
+        </div>
+
+        <!-- Referral Page -->
+        <div id="referral-page" class="page active">
+            <div class="referral-header">
+                <h2>🎁 Invite & Earn</h2>
+                <p>Invite friends and earn bonuses when they play!</p>
+            </div>
+
+            <div class="referral-code-section">
+                <h3>Your Referral Code</h3>
+                <div class="referral-code-box">
+                    <span id="referral-code">LOADING...</span>
+                    <button id="copy-referral-btn" class="btn btn-secondary">📋 Copy</button>
+                </div>
+                <p class="referral-note">Share this code with friends to earn bonuses!</p>
+            </div>
+
+            <div class="referral-link-section">
+                <h3>Referral Link</h3>
+                <div class="referral-link-box">
+                    <span id="referral-link">https://t.me/your_bot?start=REF_CODE</span>
+                    <button id="copy-link-btn" class="btn btn-secondary">📋 Copy</button>
+                </div>
+            </div>
+
+            <div class="referral-stats">
+                <h3>📊 Your Referrals</h3>
+                <div class="referral-stats-grid">
+                    <div class="referral-stat">
+                        <div class="stat-value" id="total-referrals">0</div>
+                        <div class="stat-label">Total Referrals</div>
+                    </div>
+                    <div class="referral-stat">
+                        <div class="stat-value" id="referral-bonus">0</div>
+                        <div class="stat-label">Bonus Earned</div>
+                    </div>
+                    <div class="referral-stat">
+                        <div class="stat-value" id="active-referrals">0</div>
+                        <div class="stat-label">Active Players</div>
+                    </div>
+                </div>
+            </div>
+
+            <div class="referral-list">
+                <h3>👥 Referral List</h3>
+                <div id="referral-list-content" class="referral-list-content">
+                    <p class="loading">Loading referrals...</p>
+                </div>
+            </div>
+
+            <div class="referral-info">
+                <h3>ℹ️ How It Works</h3>
+                <div class="info-list">
+                    <div class="info-item">
+                        <span class="info-icon">1️⃣</span>
+                        <span>Share your referral code or link with friends</span>
+                    </div>
+                    <div class="info-item">
+                        <span class="info-icon">2️⃣</span>
+                        <span>Friends join using your code</span>
+                    </div>
+                    <div class="info-item">
+                        <span class="info-icon">3️⃣</span>
+                        <span>Earn bonuses when they play games</span>
+                    </div>
+                    <div class="info-item">
+                        <span class="info-icon">4️⃣</span>
+                        <span>Track your earnings in real-time</span>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script src="referral.js"></script>
+</body>
+
+</html>

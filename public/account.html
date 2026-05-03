@@ -1,0 +1,103 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>KELALBINGO - Account</title>
+    <script src="https://telegram.org/js/telegram-web-app.js"></script>
+    <link rel="stylesheet" href="styles.css">
+</head>
+
+<body>
+    <div id="app">
+        <!-- Main Navigation -->
+        <div class="main-nav">
+            <div class="nav-header">
+                <h1 class="app-title">🎮 KELALBINGO</h1>
+                <div class="user-info">
+                    <span id="username">Loading...</span>
+                </div>
+            </div>
+            <div class="nav-tabs">
+                <button class="nav-tab" data-page="game" onclick="window.location.href='game.html'">🎲 Game</button>
+                <button class="nav-tab active" data-page="account">👤 Account</button>
+                <button class="nav-tab" data-page="referral" onclick="window.location.href='referral.html'">🎁 Referral</button>
+            </div>
+        </div>
+
+        <!-- Account Page -->
+        <div id="account-page" class="page active">
+            <div class="account-header">
+                <div class="profile-section">
+                    <div class="profile-avatar">
+                        <span id="profile-avatar-text">👤</span>
+                    </div>
+                    <div class="profile-info">
+                        <h2 id="profile-name">Loading...</h2>
+                        <p id="profile-username">@username</p>
+                    </div>
+                </div>
+            </div>
+
+            <div class="account-stats">
+                <h3>📊 Your Statistics</h3>
+                <div class="stats-grid">
+                    <div class="stat-card">
+                        <div class="stat-icon">🎮</div>
+                        <div class="stat-content">
+                            <div class="stat-value" id="total-games">0</div>
+                            <div class="stat-label">Total Games</div>
+                        </div>
+                    </div>
+                    <div class="stat-card">
+                        <div class="stat-icon">💰</div>
+                        <div class="stat-content">
+                            <div class="stat-value" id="total-bet">0</div>
+                            <div class="stat-label">Total Bet</div>
+                        </div>
+                    </div>
+                    <div class="stat-card">
+                        <div class="stat-icon">🏆</div>
+                        <div class="stat-content">
+                            <div class="stat-value" id="total-payout">0</div>
+                            <div class="stat-label">Total Payout</div>
+                        </div>
+                    </div>
+                    <div class="stat-card">
+                        <div class="stat-icon">📈</div>
+                        <div class="stat-content">
+                            <div class="stat-value" id="total-profit">0</div>
+                            <div class="stat-label">Net Profit</div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <div class="account-balance">
+                <h3>💳 Balance Information</h3>
+                <div class="balance-card">
+                    <div class="balance-row">
+                        <span>Current Balance:</span>
+                        <span id="account-balance" class="balance-amount">0 Birr</span>
+                    </div>
+                    <div class="balance-row">
+                        <span>Total Profit:</span>
+                        <span id="account-profit" class="profit-amount">0 Birr</span>
+                    </div>
+                </div>
+            </div>
+
+            <div class="account-history">
+                <h3>📜 Recent Games</h3>
+                <div id="account-history-list" class="history-list">
+                    <p class="loading">Loading game history...</p>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script src="account.js"></script>
+</body>
+
+</html>
