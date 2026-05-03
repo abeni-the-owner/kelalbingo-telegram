@@ -486,19 +486,25 @@ function toggleCardSelection(cardId, cardNumber) {
 
         debugLog(`➖ Deselected card #${cardNumber}`);
     } else {
-        selectedCards.push({ id: cardId, number: cardNumber });
-        takenCards[cardId] = myUserId;
+        // Prevent duplicates by checking if card already exists
+        const existingCard = selectedCards.find(c => c.id === cardId);
+        if (!existingCard) {
+            selectedCards.push({ id: cardId, number: cardNumber });
+            takenCards[cardId] = myUserId;
 
-        if (socketReady && socket) {
-            socket.emit('select-card', {
-                roundNumber: currentRound,
-                cardId: cardId,
-                cardNumber: cardNumber,
-                userId: myUserId
-            });
+            if (socketReady && socket) {
+                socket.emit('select-card', {
+                    roundNumber: currentRound,
+                    cardId: cardId,
+                    cardNumber: cardNumber,
+                    userId: myUserId
+                });
+            }
+
+            debugLog(`➕ Selected card #${cardNumber}`);
+        } else {
+            debugLog(`⚠️ Card #${cardNumber} already selected, skipping`);
         }
-
-        debugLog(`➕ Selected card #${cardNumber}`);
     }
 
     displayCards(allCards);
@@ -506,7 +512,7 @@ function toggleCardSelection(cardId, cardNumber) {
     updateStartButton();
 }
 
-// Update selected cards display with tiny bingo grids
+// Update selected cards display with medium bingo grids
 function updateSelectedCards() {
     const container = document.getElementById('selected-cards');
 
@@ -515,7 +521,18 @@ function updateSelectedCards() {
         return;
     }
 
-    container.innerHTML = selectedCards.map(card => {
+    // Remove duplicates by using a Set to track unique card IDs
+    const uniqueCards = [];
+    const seenIds = new Set();
+
+    selectedCards.forEach(card => {
+        if (!seenIds.has(card.id)) {
+            seenIds.add(card.id);
+            uniqueCards.push(card);
+        }
+    });
+
+    container.innerHTML = uniqueCards.map(card => {
         const cardData = allCards.find(c => c.id === card.id);
         if (!cardData) return '';
 
@@ -524,7 +541,7 @@ function updateSelectedCards() {
                 <div class="selected-card-info">
                     <span class="selected-card-number">#${card.number}</span>
                     <div class="selected-card-grid">
-                        ${generateTinyBingoGrid(cardData)}
+                        ${generateMediumBingoGrid(cardData)}
                     </div>
                 </div>
                 <button class="remove-card" onclick="removeCard(${card.id})">✕</button>
@@ -533,16 +550,30 @@ function updateSelectedCards() {
     }).join('');
 }
 
-// Generate tiny bingo grid for selected card
-function generateTinyBingoGrid(card) {
+// Generate medium bingo grid for selected card with BINGO header
+function generateMediumBingoGrid(card) {
     let html = '';
+
+    // BINGO header row
+    html += '<div class="bingo-header-row">';
+    html += '<div class="bingo-header-cell">B</div>';
+    html += '<div class="bingo-header-cell">I</div>';
+    html += '<div class="bingo-header-cell">N</div>';
+    html += '<div class="bingo-header-cell">G</div>';
+    html += '<div class="bingo-header-cell">O</div>';
+    html += '</div>';
+
+    // Number rows
     for (let row = 0; row < 5; row++) {
-        html += `<div class="tiny-bingo-cell">${card.b_column[row]}</div>`;
-        html += `<div class="tiny-bingo-cell">${card.i_column[row]}</div>`;
-        html += `<div class="tiny-bingo-cell ${card.n_column[row] === 0 ? 'free' : ''}">${card.n_column[row] === 0 ? '⭐' : card.n_column[row]}</div>`;
-        html += `<div class="tiny-bingo-cell">${card.g_column[row]}</div>`;
-        html += `<div class="tiny-bingo-cell">${card.o_column[row]}</div>`;
+        html += '<div class="bingo-numbers-row">';
+        html += `<div class="medium-bingo-cell">${card.b_column[row]}</div>`;
+        html += `<div class="medium-bingo-cell">${card.i_column[row]}</div>`;
+        html += `<div class="medium-bingo-cell ${card.n_column[row] === 0 ? 'free' : ''}">${card.n_column[row] === 0 ? '⭐' : card.n_column[row]}</div>`;
+        html += `<div class="medium-bingo-cell">${card.g_column[row]}</div>`;
+        html += `<div class="medium-bingo-cell">${card.o_column[row]}</div>`;
+        html += '</div>';
     }
+
     return html;
 }
 

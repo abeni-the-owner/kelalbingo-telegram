@@ -344,29 +344,56 @@ body {
 }
 
 .selected-card-grid {
+    display: flex;
+    flex-direction: column;
+    gap: 2px;
+    margin-left: 8px;
+    background: var(--tg-theme-hint-color, #e1e1e1);
+    border-radius: 4px;
+    padding: 2px;
+}
+
+.bingo-header-row {
     display: grid;
     grid-template-columns: repeat(5, 1fr);
     gap: 1px;
-    background: var(--tg-theme-hint-color, #e1e1e1);
-    border-radius: 3px;
-    padding: 1px;
-    margin-left: 8px;
+    margin-bottom: 2px;
 }
 
-.tiny-bingo-cell {
-    background: var(--tg-theme-bg-color, #ffffff);
-    border-radius: 1px;
-    width: 12px;
-    height: 12px;
+.bingo-header-cell {
+    background: var(--tg-theme-button-color, #3390ec);
+    color: white;
+    border-radius: 2px;
+    padding: 2px 1px;
+    font-size: 0.65rem;
+    font-weight: bold;
+    text-align: center;
     display: flex;
     align-items: center;
     justify-content: center;
+}
+
+.bingo-numbers-row {
+    display: grid;
+    grid-template-columns: repeat(5, 1fr);
+    gap: 1px;
+}
+
+.medium-bingo-cell {
+    background: var(--tg-theme-bg-color, #ffffff);
+    border-radius: 2px;
+    padding: 2px 1px;
     font-size: 0.6rem;
     font-weight: 500;
     color: var(--tg-theme-text-color, #000000);
+    text-align: center;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    min-height: 14px;
 }
 
-.tiny-bingo-cell.free {
+.medium-bingo-cell.free {
     background: var(--tg-theme-button-color, #3390ec);
     background: color-mix(in srgb, var(--tg-theme-button-color, #3390ec) 50%, var(--tg-theme-bg-color, #ffffff));
     color: var(--tg-theme-button-color, #3390ec);
